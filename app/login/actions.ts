@@ -47,7 +47,8 @@ export async function loginAction(
     return { ok: false, message: "邮箱或密码不正确" };
   }
 
-  cookies().set("session", JSON.stringify({ email }), {
+  const cookieStore = await cookies();
+  cookieStore.set("session", JSON.stringify({ email }), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
