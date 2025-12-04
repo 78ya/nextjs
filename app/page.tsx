@@ -66,6 +66,27 @@ export default function Home() {
           </div>
         </section>
 
+        {/* 登录 / 注册 快捷入口 */}
+        <section className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/40 px-5 py-4">
+          <div className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p>想体验完整流程？可以先注册一个账户，再使用登录页进入应用。</p>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto justify-end">
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center rounded-full border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              登录
+            </a>
+            <a
+              href="/register"
+              className="inline-flex items-center justify-center rounded-full bg-zinc-900 text-zinc-50 px-4 py-2 text-sm font-medium hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 transition-colors"
+            >
+              注册
+            </a>
+          </div>
+        </section>
+
         {/* 博客列表 */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
