@@ -1,43 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useFormState, useFormStatus } from "react-dom";
+import { loginAction, type LoginState } from "./actions";
+
+const initialState: LoginState = {
+  ok: true,
+};
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full py-3 px-4 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {pending ? "登录中..." : "登录"}
+    </button>
+  );
+}
 
 export default function LoginForm() {
-  const router = useRouter();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-
-    // 这里添加实际的登录逻辑
-    // 例如：调用 API 端点
-    try {
-      // 模拟 API 调用
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // 登录成功后跳转
-      router.push("/");
-    } catch (err) {
-      setError("登录失败，请检查您的凭据");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const [state, formAction] = useFormState(loginAction, initialState);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-8 border border-zinc-200 dark:border-zinc-800">
@@ -52,14 +36,14 @@ export default function LoginForm() {
       </div>
 
       {/* 错误提示 */}
-      {error && (
+      {!state.ok && state.message && (
         <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          {error}
+          {state.message}
         </div>
       )}
 
       {/* 登录表单 */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form action={formAction} className="space-y-6">
         {/* 邮箱输入 */}
         <div>
           <label
@@ -73,8 +57,6 @@ export default function LoginForm() {
             name="email"
             type="email"
             required
-            value={formData.email}
-            onChange={handleChange}
             className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 focus:border-transparent transition-colors"
             placeholder="your@email.com"
           />
@@ -93,8 +75,6 @@ export default function LoginForm() {
             name="password"
             type="password"
             required
-            value={formData.password}
-            onChange={handleChange}
             className="w-full px-4 py-3 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 focus:border-transparent transition-colors"
             placeholder="••••••••"
           />
@@ -120,13 +100,7 @@ export default function LoginForm() {
         </div>
 
         {/* 登录按钮 */}
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-3 px-4 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-lg font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? "登录中..." : "登录"}
-        </button>
+        <SubmitButton />
       </form>
 
       {/* 分隔线 */}
