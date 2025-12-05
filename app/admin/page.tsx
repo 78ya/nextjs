@@ -1,22 +1,4 @@
-import { get } from "@vercel/edge-config";
-
-type AdminConfig = {
-  admin?: {
-    url?: string;
-    account?: string;
-    password?: string;
-  };
-};
-
-async function getAdminConfig(): Promise<Required<AdminConfig>["admin"]> {
-  const cfg = await get<AdminConfig>("admin");
-  const admin = (cfg && typeof cfg === "object" && "admin" in cfg ? cfg.admin : undefined) || {};
-  return {
-    url: admin.url || "admin",
-    account: admin.account || "admin",
-    password: admin.password || "admin",
-  };
-}
+import { getAdminConfig } from "@/lib/edge-config";
 
 export default async function AdminPage() {
   const admin = await getAdminConfig();

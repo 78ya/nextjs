@@ -29,6 +29,43 @@ export async function getMaintenanceMode(): Promise<boolean> {
 }
 
 /**
+ * 从 Edge Config Store 获取管理员配置
+ * 
+ * @returns {Promise<{ url: string; account: string; password: string }>} 管理员配置
+ * 
+ * 配置结构：
+ * Edge Config key: "admin"
+ * JSON 格式: { 
+ *   "admin": {
+ *     "url": "string",
+ *     "account": "string",
+ *     "password": "string"
+ *   }
+ * }
+ * 
+ * 如果 Edge Config 获取失败，返回默认值
+ */
+export async function getAdminConfig(): Promise<{ url: string; account: string; password: string }> {
+  try {
+    const cfg = await get<{ admin?: { url?: string; account?: string; password?: string } }>("admin");
+    const admin = (cfg && typeof cfg === "object" && "admin" in cfg ? cfg.admin : undefined) || {};
+    return {
+      url: admin.url || "admin",
+      account: admin.account || "admin",
+      password: admin.password || "admin",
+    };
+  } catch (error) {
+    // Edge Config 获取失败时，返回默认值
+    console.error("获取管理员配置失败，使用默认值:", error);
+    return {
+      url: "admin",
+      account: "admin",
+      password: "admin",
+    };
+  }
+}
+
+/**
  * 从 Edge Config Store 获取 Resend API Key
  * 
  * @returns {Promise<string | null>} Resend API Key，获取失败返回 null
