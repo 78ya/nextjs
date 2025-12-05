@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Build-time env injection without .env files
+  env: {
+    MAINTENANCE_MODE: "false",
+  },
 };
 
 export default nextConfig;
