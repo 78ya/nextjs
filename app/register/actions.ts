@@ -47,19 +47,12 @@ async function getEmailApiUrl(): Promise<string | null> {
   }
 }
 
-// 获取邮件 API Endpoint
+// 获取邮件 API Endpoint（直接使用 api_url）
 async function getEmailApiEndpoint(): Promise<string | null> {
   try {
-    const resendEmailData = await get<{ sender?: { register?: string } }>("resend_email");
-    if (
-      resendEmailData &&
-      typeof resendEmailData === "object" &&
-      "sender" in resendEmailData &&
-      resendEmailData.sender &&
-      typeof resendEmailData.sender === "object" &&
-      "register" in resendEmailData.sender
-    ) {
-      return resendEmailData.sender.register ?? null;
+    const resendEmailData = await get<{ api_url?: string }>("resend_email");
+    if (resendEmailData && typeof resendEmailData === "object" && "api_url" in resendEmailData) {
+      return resendEmailData.api_url ?? null;
     }
     return null;
   } catch (error) {
