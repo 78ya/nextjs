@@ -68,6 +68,26 @@ async function getEmailApiEndpoint(): Promise<string | null> {
   }
 }
 
+// 获取发件人地址
+async function getEmailFromAddress(): Promise<string | null> {
+  try {
+    const resendEmailData = await get<{ from?: string; sender?: { from?: string } }>("resend_email");
+    if (resendEmailData && typeof resendEmailData === "object") {
+      if ("from" in resendEmailData && resendEmailData.from) {
+        return resendEmailData.from;
+      }
+      if ("sender" in resendEmailData && resendEmailData.sender && typeof resendEmailData.sender === "object") {
+        const maybeFrom = (resendEmailData.sender as { from?: string }).from;
+        if (maybeFrom) return maybeFrom;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("获取邮件发件人失败:", error);
+    return null;
+  }
+}
+
 
 // 生成 6 位随机验证码
 function generateVerificationCode(): string {
@@ -107,7 +127,6 @@ function getLibsqlClient() {
 
 // 发送邮件
 async function sendEmail(
-  from: string,
   subject: string,
   to: string[],
   text: string,
@@ -123,18 +142,18 @@ async function sendEmail(
     throw new Error("未配置邮件 API Endpoint，无法发送邮件");
   }
 
+  const from = await getEmailFromAddress();
+  if (!from) {
+    throw new Error("未配置邮件发件人地址");
+  }
+
   const body: {
     from: string;
     subject: string;
     to: string[];
     text: string;
     html?: string;
-  } = {
-    from,
-    subject,
-    to,
-    text,
-  };
+  } = { from, subject, to, text };
 
   if (html) {
     body.html = html;
@@ -167,8 +186,7 @@ async function sendVerificationCode(email: string): Promise<void> {
   // 纯文本版本（作为备用）
   const textContent = `您的验证码是：${code}\n\n验证码有效期为 10 分钟，请勿泄露给他人。`;
 
-  await sendEmail(
-    "Acme <login@78ya.me>",
+  await sendEmail( 
     "邮箱验证码",
     [email],
     textContent,
@@ -203,7 +221,6 @@ async function sendRegisterSuccessEmail(name: string, email: string): Promise<vo
     ].join("\n");
 
     await sendEmail(
-      "Acme <login@78ya.me>",
       "注册成功",
       [email],
       textContent,
