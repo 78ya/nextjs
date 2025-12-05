@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getMaintenanceMode } from "@/lib/edge-config";
 
 // 维护/初始化期间的白名单路径前缀
 const ALLOW_PREFIXES = [
@@ -11,9 +12,11 @@ const ALLOW_PREFIXES = [
   "/favicon",
 ];
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
+  // 从 Edge Config Store 获取维护模式状态
+  const maintenanceMode = await getMaintenanceMode();
+  
   // 未开启维护模式则放行
-  const maintenanceMode = process.env.MAINTENANCE_MODE === "true";
   if (!maintenanceMode) return NextResponse.next();
 
   const { pathname } = req.nextUrl;
