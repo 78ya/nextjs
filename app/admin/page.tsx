@@ -1,16 +1,25 @@
 import { get } from "@vercel/edge-config";
 
-async function getAdminUrl(): Promise<string> {
-  const cfg = await get<{ admin?: { url?: string } }>("admin");
-  if (cfg && typeof cfg === "object" && "admin" in cfg) {
-    const url = cfg.admin?.url;
-    if (url) return url;
-  }
-  return "admin";
+type AdminConfig = {
+  admin?: {
+    url?: string;
+    account?: string;
+    password?: string;
+  };
+};
+
+async function getAdminConfig(): Promise<Required<AdminConfig>["admin"]> {
+  const cfg = await get<AdminConfig>("admin");
+  const admin = (cfg && typeof cfg === "object" && "admin" in cfg ? cfg.admin : undefined) || {};
+  return {
+    url: admin.url || "admin",
+    account: admin.account || "admin",
+    password: admin.password || "admin",
+  };
 }
 
 export default async function AdminPage() {
-  const adminUrl = await getAdminUrl();
+  const admin = await getAdminConfig();
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-4">
@@ -23,13 +32,27 @@ export default async function AdminPage() {
             管理地址已配置，请点击访问：
           </p>
           <a
-            href={adminUrl}
+            href={admin.url}
             className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-medium hover:opacity-90 transition"
           >
             打开后台
           </a>
           <p className="text-xs text-zinc-500 dark:text-zinc-500 break-words">
-            {adminUrl}
+            {admin.url}
+          </p>
+        </div>
+        <div className="text-left text-sm text-zinc-600 dark:text-zinc-400 bg-zinc-100/70 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 space-y-2">
+          <div className="font-semibold text-zinc-800 dark:text-zinc-100">登录信息</div>
+          <div className="flex items-center justify-between">
+            <span>账号</span>
+            <span className="font-mono text-zinc-900 dark:text-zinc-100">{admin.account}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>密码</span>
+            <span className="font-mono text-zinc-900 dark:text-zinc-100">{admin.password}</span>
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+            如需修改，请在 Edge Config 中更新键：admin.account / admin.password。
           </p>
         </div>
       </div>
