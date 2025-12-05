@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@libsql/client";
 import { getDatabaseConfig } from "@/lib/edge-config";
+import { setUserSession } from "@/lib/cookies";
 
 export type LoginState = {
   ok: boolean;
@@ -70,14 +70,7 @@ export async function loginAction(
     return { ok: false, message: "邮箱或密码不正确" };
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set("session", JSON.stringify({ email }), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+  await setUserSession(email);
 
   redirect("/");
 }

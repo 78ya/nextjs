@@ -1,11 +1,18 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { getResendApiKey, getEmailApiEndpoint, getEmailFromAddress } from "@/lib/edge-config";
 import { createClient } from "@libsql/client";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import {
+  setVerificationCode,
+  getVerificationCode,
+  deleteVerificationCode,
+  setRegisterTemp,
+  getRegisterTemp,
+  deleteRegisterTemp,
+} from "@/lib/cookies";
 
 export type RegisterState = {
   ok: boolean;
@@ -124,18 +131,7 @@ async function sendVerificationCode(email: string): Promise<void> {
     htmlTemplate
   );
 
-  const cookieStore = await cookies();
-  cookieStore.set(
-    `verify_code_${email}`,
-    JSON.stringify({ code, timestamp: Date.now() }),
-    {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 10,
-    }
-  );
+  await setVerificationCode(email, code);
 }
 
 // 发送注册成功邮件（失败不影响主流程）
@@ -164,33 +160,18 @@ async function sendRegisterSuccessEmail(name: string, email: string): Promise<vo
 
 // 验证验证码
 async function verifyCode(email: string, code: string): Promise<boolean> {
-  const cookieStore = await cookies();
-  const codeData = cookieStore.get(`verify_code_${email}`);
+  const codeData = await getVerificationCode(email);
   
   if (!codeData) {
     return false;
   }
 
-  try {
-    const { code: storedCode, timestamp } = JSON.parse(codeData.value);
-    const now = Date.now();
-    const expireTime = timestamp + 60 * 10 * 1000;
-    
-    if (now > expireTime) {
-      cookieStore.delete(`verify_code_${email}`);
-      return false;
-    }
-
-    if (storedCode === code) {
-      cookieStore.delete(`verify_code_${email}`);
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error("验证码验证失败:", error);
-    return false;
+  if (codeData.code === code) {
+    await deleteVerificationCode(email);
+    return true;
   }
+
+  return false;
 }
 
 // 提交基本信息并发送验证码
@@ -222,14 +203,7 @@ export async function sendCodeAction(
   try {
     await sendVerificationCode(email);
     
-    const cookieStore = await cookies();
-    cookieStore.set("register_temp", JSON.stringify({ name, email, password }), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 10,
-    });
+    await setRegisterTemp({ name, email, password });
 
     return {
       ok: true,
@@ -262,24 +236,12 @@ export async function verifyCodeAction(
     return { ok: false, message: "验证码应为 6 位数字", step: "verify" };
   }
 
-  const cookieStore = await cookies();
-  const tempData = cookieStore.get("register_temp");
+  const registerData = await getRegisterTemp();
   
-  if (!tempData) {
+  if (!registerData) {
     return {
       ok: false,
       message: "注册信息已过期，请重新填写",
-      step: "info",
-    };
-  }
-
-  let registerData: { name: string; email: string; password: string };
-  try {
-    registerData = JSON.parse(tempData.value);
-  } catch {
-    return {
-      ok: false,
-      message: "注册信息无效，请重新填写",
       step: "info",
     };
   }
@@ -317,7 +279,7 @@ export async function verifyCodeAction(
     };
   }
   
-  cookieStore.delete("register_temp");
+  await deleteRegisterTemp();
 
   redirect("/login");
 }

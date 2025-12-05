@@ -47,18 +47,27 @@ export async function getMaintenanceMode(): Promise<boolean> {
  */
 export async function getAdminConfig(): Promise<{ url: string; account: string; password: string }> {
   try {
-    const cfg = await get<{ admin?: { url?: string; account?: string; password?: string } }>("admin");
-    const admin = (cfg && typeof cfg === "object" && "admin" in cfg ? cfg.admin : undefined) || {};
+    const cfg = await get<{ url?: string; account?: string; password?: string }>("admin");
+    
+    if (cfg && typeof cfg === "object") {
+      return {
+        url: cfg.url || "/admin",
+        account: cfg.account || "admin",
+        password: cfg.password || "admin",
+      };
+    }
+    
+    // Edge Config 中没有配置，返回默认值
     return {
-      url: admin.url || "admin",
-      account: admin.account || "admin",
-      password: admin.password || "admin",
+      url: "/admin",
+      account: "admin",
+      password: "admin",
     };
   } catch (error) {
     // Edge Config 获取失败时，返回默认值
     console.error("获取管理员配置失败，使用默认值:", error);
     return {
-      url: "admin",
+      url: "/admin",
       account: "admin",
       password: "admin",
     };
