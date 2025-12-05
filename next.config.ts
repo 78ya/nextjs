@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Build-time env injection without .env files
+  /* config options here */
   env: {
-    MAINTENANCE_MODE: "false",
+    // 维护模式：设置为 "true" 启用，设置为 "false" 或未设置则禁用
+    MAINTENANCE_MODE: process.env.MAINTENANCE_MODE || "false",
+    DATABASE_URL: process.env.DATABASE_URL || "",
   },
 };
 
