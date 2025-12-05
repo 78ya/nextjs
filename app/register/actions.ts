@@ -290,9 +290,10 @@ export async function sendCodeAction(
       email,
     };
   } catch (error) {
+    console.error("发送验证码失败:", error);
     return {
       ok: false,
-      message: "发送验证码失败，请稍后重试",
+      message: `发送验证码失败：${error instanceof Error ? error.message : String(error)}`,
       step: "info",
     };
   }
