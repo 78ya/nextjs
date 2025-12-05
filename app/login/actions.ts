@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@libsql/client";
+import { getDatabaseConfig } from "@/lib/edge-config";
 
 export type LoginState = {
   ok: boolean;
@@ -15,19 +16,18 @@ type DbUser = {
   name?: string | null;
 };
 
-function getLibsqlClient() {
-  const url = process.env.LIBSQL_URL ?? process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.LIBSQL_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
+async function getLibsqlClient() {
+  const { url, authToken } = await getDatabaseConfig();
 
   if (!url) {
-    throw new Error("未配置 LIBSQL_URL/TURSO_DATABASE_URL，无法连接数据库");
+    throw new Error("未配置数据库 URL，无法连接数据库");
   }
 
   return authToken ? createClient({ url, authToken }) : createClient({ url });
 }
 
 async function fetchUser(email: string): Promise<DbUser | null> {
-  const client = getLibsqlClient();
+  const client = await getLibsqlClient();
 
   // 确保表存在（与注册流程一致）
   await client.execute(`

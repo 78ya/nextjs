@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { get } from "@vercel/edge-config";
+import { getResendApiKey, getEmailApiEndpoint, getEmailFromAddress } from "@/lib/edge-config";
 import { createClient } from "@libsql/client";
 import { readFile } from "fs/promises";
 import { join } from "path";
@@ -18,75 +18,6 @@ export type SendCodeState = {
   ok: boolean;
   message?: string;
 };
-
-// 获取 Resend API Key
-async function getResendApiKey(): Promise<string | null> {
-  try {
-    const resendEmailData = await get<{ api_keys?: string }>("resend_email");
-    if (resendEmailData && typeof resendEmailData === "object" && "api_keys" in resendEmailData) {
-      return resendEmailData.api_keys ?? null;
-    }
-    return null;
-  } catch (error) {
-    console.error("获取 Resend API Key 失败:", error);
-    return null;
-  }
-}
-
-// 获取邮件 API URL
-async function getEmailApiUrl(): Promise<string | null> {
-  try {
-    const resendEmailData = await get<{ api_url?: string }>("resend_email");
-    if (resendEmailData && typeof resendEmailData === "object" && "api_url" in resendEmailData) {
-      return resendEmailData.api_url ?? null;
-    }
-    return null;
-  } catch (error) {
-    console.error("获取 Resend API URL 失败:", error);
-    return null;
-  }
-}
-
-// 获取邮件 API Endpoint（直接使用 api_url）
-async function getEmailApiEndpoint(): Promise<string | null> {
-  try {
-    const resendEmailData = await get<{ api_url?: string }>("resend_email");
-    if (resendEmailData && typeof resendEmailData === "object" && "api_url" in resendEmailData) {
-      return resendEmailData.api_url ?? null;
-    }
-    return null;
-  } catch (error) {
-    console.error("获取 Resend API Endpoint 失败:", error);
-    return null;
-  }
-}
-
-// 获取发件人地址：resend_email -> sender -> register
-async function getEmailFromAddress(): Promise<string | null> {
-  try {
-    const resendEmailData = await get<{ sender?: { register?: string; from?: string }; from?: string }>("resend_email");
-    if (resendEmailData && typeof resendEmailData === "object") {
-      // 优先读取 sender.register
-      const sender = resendEmailData.sender;
-      if (sender && typeof sender === "object") {
-        if ("register" in sender && sender.register) {
-          return sender.register;
-        }
-        if ("from" in sender && sender.from) {
-          return sender.from;
-        }
-      }
-      // 退回顶层 from
-      if ("from" in resendEmailData && resendEmailData.from) {
-        return resendEmailData.from;
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error("获取邮件发件人失败:", error);
-    return null;
-  }
-}
 
 
 // 生成 6 位随机验证码
