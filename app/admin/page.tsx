@@ -51,9 +51,6 @@ export default async function AdminPage() {
             <span>密码</span>
             <span className="font-mono text-zinc-900 dark:text-zinc-100">{admin.password}</span>
           </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">
-            如需修改，请在 Edge Config 中更新键：admin.account / admin.password。
-          </p>
         </div>
       </div>
     </main>
