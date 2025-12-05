@@ -1,27 +1,56 @@
 "use server";
 
-import { NextResponse } from 'next/server';
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { get } from "@vercel/edge-config";
+import { createClient } from "@libsql/client";
 
 export type LoginState = {
   ok: boolean;
   message?: string;
 };
 
-type EdgeUser = {
+type DbUser = {
+  email: string;
   password: string;
-  name?: string;
+  name?: string | null;
 };
 
-async function fetchUser(email: string) {
-  const users =
-    (await get<Record<string, EdgeUser>>("users")) ??
-    (await get<Record<string, EdgeUser>>("logins")) ??
-    {};
+function getLibsqlClient() {
+  const url = process.env.LIBSQL_URL ?? process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.LIBSQL_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
 
-  return users[email];
+  if (!url) {
+    throw new Error("未配置 LIBSQL_URL/TURSO_DATABASE_URL，无法连接数据库");
+  }
+
+  return authToken ? createClient({ url, authToken }) : createClient({ url });
+}
+
+async function fetchUser(email: string): Promise<DbUser | null> {
+  const client = getLibsqlClient();
+
+  // 确保表存在（与注册流程一致）
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      email TEXT PRIMARY KEY,
+      password TEXT NOT NULL,
+      name TEXT
+    )
+  `);
+
+  const result = await client.execute({
+    sql: "SELECT email, password, name FROM users WHERE email = ? LIMIT 1",
+    args: [email],
+  });
+
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0] as unknown as DbUser;
+  return {
+    email: row.email,
+    password: row.password,
+    name: row.name,
+  };
 }
 
 export async function loginAction(
@@ -33,13 +62,6 @@ export async function loginAction(
 
   if (!email || !password) {
     return { ok: false, message: "请输入邮箱和密码" };
-  }
-
-  if (!process.env.EDGE_CONFIG) {
-    return {
-      ok: false,
-      message: "未配置 EDGE_CONFIG，无法连接 Nextjs Store。",
-    };
   }
 
   const user = await fetchUser(email);
