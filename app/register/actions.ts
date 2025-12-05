@@ -68,17 +68,24 @@ async function getEmailApiEndpoint(): Promise<string | null> {
   }
 }
 
-// 获取发件人地址
+// 获取发件人地址：resend_email -> sender -> register
 async function getEmailFromAddress(): Promise<string | null> {
   try {
-    const resendEmailData = await get<{ from?: string; sender?: { from?: string } }>("resend_email");
+    const resendEmailData = await get<{ sender?: { register?: string; from?: string }; from?: string }>("resend_email");
     if (resendEmailData && typeof resendEmailData === "object") {
+      // 优先读取 sender.register
+      const sender = resendEmailData.sender;
+      if (sender && typeof sender === "object") {
+        if ("register" in sender && sender.register) {
+          return sender.register;
+        }
+        if ("from" in sender && sender.from) {
+          return sender.from;
+        }
+      }
+      // 退回顶层 from
       if ("from" in resendEmailData && resendEmailData.from) {
         return resendEmailData.from;
-      }
-      if ("sender" in resendEmailData && resendEmailData.sender && typeof resendEmailData.sender === "object") {
-        const maybeFrom = (resendEmailData.sender as { from?: string }).from;
-        if (maybeFrom) return maybeFrom;
       }
     }
     return null;
