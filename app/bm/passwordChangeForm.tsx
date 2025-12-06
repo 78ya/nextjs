@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { changePassword, type PasswordChangeState } from "./actions";
 
 function SubmitButton() {
@@ -18,7 +19,7 @@ function SubmitButton() {
 
 export default function PasswordChangeForm() {
   const initialState: PasswordChangeState = { ok: true };
-  const [state, formAction] = useFormState(changePassword, initialState);
+  const [state, formAction] = useActionState(changePassword, initialState);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 p-6">

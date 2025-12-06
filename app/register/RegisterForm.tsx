@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   sendCodeAction,
   verifyCodeAction,
@@ -39,8 +40,8 @@ function SendCodeButton() {
 }
 
 export default function RegisterForm() {
-  const [state, formAction] = useFormState(sendCodeAction, initialState);
-  const [verifyState, verifyFormAction] = useFormState(
+  const [state, formAction] = useActionState(sendCodeAction, initialState);
+  const [verifyState, verifyFormAction] = useActionState(
     verifyCodeAction,
     initialState
   );

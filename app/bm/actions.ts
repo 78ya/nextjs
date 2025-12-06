@@ -216,7 +216,7 @@ export async function deleteAccountAction(): Promise<void> {
     redirect("/");
   } catch (error) {
     console.error("删除账号失败:", error);
-    redirect("/BackgroundManagement");
+    redirect("/bm");
   }
 }
 

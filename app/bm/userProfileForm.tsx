@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { updateUserInfo, type UserInfoState } from "./actions";
 
 function SubmitButton() {
@@ -23,7 +24,7 @@ interface UserProfileFormProps {
 
 export default function UserProfileForm({ initialName, initialEmail }: UserProfileFormProps) {
   const initialState: UserInfoState = { ok: true };
-  const [state, formAction] = useFormState(updateUserInfo, initialState);
+  const [state, formAction] = useActionState(updateUserInfo, initialState);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 p-6">
