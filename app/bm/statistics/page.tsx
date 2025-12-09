@@ -18,6 +18,9 @@ export default function StatisticsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button className="px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            刷新
+          </button>
           <select
             value={timeRange}
             onChange={(e) =>

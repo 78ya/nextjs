@@ -1,16 +1,16 @@
 import {
   ChartBarIcon,
-  UserGroupIcon,
+  ServerIcon,
+  LockClosedIcon,
   ChartPieIcon,
-  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 
 export default function AdminPage() {
   const cards = [
-    { name: "仪表板", href: "/bm/dashboard", Icon: ChartBarIcon },
-    { name: "用户管理", href: "/bm/users", Icon: UserGroupIcon },
+    { name: "FRP 观测", href: "/bm/frp-obs", Icon: ChartBarIcon },
+    { name: "VPN 观测", href: "/bm/vpn-obs", Icon: LockClosedIcon },
+    { name: "服务器观测", href: "/bm/servers-obs", Icon: ServerIcon },
     { name: "数据统计", href: "/bm/statistics", Icon: ChartPieIcon },
-    { name: "个人设置", href: "/bm/profile", Icon: UserCircleIcon },
   ];
 
   return (

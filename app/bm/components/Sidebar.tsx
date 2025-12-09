@@ -2,71 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChartBarIcon,
-  UserGroupIcon,
-  ChartPieIcon,
-  ClipboardDocumentListIcon,
-  Cog6ToothIcon,
-  ShieldCheckIcon,
-  UserCircleIcon,
-  HomeIcon,
-  FolderIcon,
-  AdjustmentsHorizontalIcon,
-  CpuChipIcon,
-  DocumentTextIcon,
-  PencilSquareIcon,
-  ServerIcon,
-  LockClosedIcon,
-} from "@heroicons/react/24/outline";
-import { useState } from "react";
-
-interface NavItem {
-  name: string;
-  href: string;
-  Icon: (props: React.ComponentProps<"svg">) => JSX.Element;
-  adminOnly?: boolean;
-}
-
-interface NavGroup {
-  label: string;
-  icon: (props: React.ComponentProps<"svg">) => JSX.Element;
-  items: NavItem[];
-  adminOnly?: boolean;
-}
-
-const groups: NavGroup[] = [
-  {
-    label: "仪表盘",
-    icon: ChartBarIcon,
-    items: [
-      { name: "FRP", href: "/bm", Icon: CpuChipIcon },
-      { name: "服务器", href: "/bm/sessions", Icon: ServerIcon },
-      { name: "VPN", href: "/bm/sessions", Icon: LockClosedIcon },
-      { name: "数据统计", href: "/bm/statistics", Icon: ChartPieIcon },
-    ],
-  },
-  {
-    label: "管理",
-    icon: FolderIcon,
-    items: [
-      { name: "FRP", href: "/bm/sessions", Icon: ShieldCheckIcon },
-      { name: "VPN", href: "/bm/sessions", Icon: LockClosedIcon },
-      { name: "服务器", href: "/bm/sessions", Icon: ServerIcon },
-      { name: "文章管理", href: "/bm/logs", Icon: ClipboardDocumentListIcon },
-      { name: "文章发布", href: "/bm/users", Icon: PencilSquareIcon, adminOnly: true },
-    ],
-  },
-  {
-    label: "设置",
-    icon: Cog6ToothIcon,
-    items: [
-      { name: "设备管理", href: "/bm/settings", Icon: AdjustmentsHorizontalIcon, adminOnly: true },
-      { name: "会话管理", href: "/bm/sessions", Icon: ShieldCheckIcon },
-      { name: "个人设置", href: "/bm/profile", Icon: UserCircleIcon },
-    ],
-  },
-];
+import { useMemo, useState } from "react";
+import { groups, topLogoIcon as HomeIcon, type NavGroup, type NavItem } from "./sidebarConfig";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -76,15 +13,34 @@ interface SidebarProps {
 
 export default function Sidebar({ isAdmin = false, isMobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
-  const activeGroup = groups.find((group) =>
-    group.items.some((item) =>
-      item.href === "/bm" ? pathname === "/bm" : pathname.startsWith(item.href)
-    )
-  )?.label;
+  const allItems = useMemo(
+    () =>
+      groups.flatMap((group) =>
+        group.items.map((item) => ({ ...item, groupLabel: group.label }))
+      ),
+    []
+  );
+
+  const activeItem = allItems.reduce<
+    (NavItem & { groupLabel: NavGroup["label"] }) | null
+  >((best, item) => {
+    const matchExact = pathname === item.href;
+    const matchPrefix = pathname.startsWith(item.href + "/");
+    if (!matchExact && !matchPrefix) return best;
+
+    const score = item.href.length + (matchExact ? 0.5 : 0); // exact 优先
+    if (!best) return { ...item, groupLabel: item.groupLabel };
+
+    const bestScore = best.href.length + (pathname === best.href ? 0.5 : 0);
+    return score > bestScore ? { ...item, groupLabel: item.groupLabel } : best;
+  }, null);
+
+  const activeGroup = activeItem?.groupLabel;
 
   const [openLabel, setOpenLabel] = useState<string | null>(activeGroup ?? null);
-  const toggleGroup = (label: string) =>
+  const toggleGroup = (label: string) => {
     setOpenLabel((prev) => (prev === label ? null : label));
+  };
   
   return (
     <>
@@ -110,10 +66,19 @@ export default function Sidebar({ isAdmin = false, isMobileOpen = false, onMobil
       >
         <div className="flex flex-col h-full">
           {/* Logo/标题区域 */}
-          <div className="flex items-center justify-center h-20 px-6 border-b border-zinc-200/50 dark:border-zinc-800/50">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent">
-              管理后台
-            </h2>
+          <div className="relative flex items-center justify-between h-20 px-6 border-b border-zinc-200/50 dark:border-zinc-800/50">
+            <Link
+              href="/"
+              onClick={onMobileClose}
+              className="flex items-center gap-3"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                <img src="/favicon.svg" alt="logo" className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400 bg-clip-text text-transparent">
+                用户中心
+              </h2>
+            </Link>
             <button
               onClick={onMobileClose}
               className="lg:hidden absolute right-4 p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -153,7 +118,8 @@ export default function Sidebar({ isAdmin = false, isMobileOpen = false, onMobil
                         .filter((item) => !item.adminOnly || isAdmin)
                         .map((item) => {
                           const isActive =
-                            item.href === "/bm" ? pathname === "/bm" : pathname.startsWith(item.href);
+                            pathname === item.href ||
+                            pathname.startsWith(item.href + "/");
                           return (
                             <Link
                               key={`${item.href}-${item.name}`}
