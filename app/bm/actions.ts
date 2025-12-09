@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import { getAdminConfig } from "@/lib/edge-config";
 import { setAdminSession } from "@/lib/cookies";
 import { getUserSession, deleteUserSession } from "@/lib/cookies";
-import { createClient } from "@libsql/client";
-import { getDatabaseConfig } from "@/lib/edge-config";
+import { getUserByEmail, updateUser, deleteUser } from "@/lib/db";
 
 export type AdminLoginState = {
   ok: boolean;
@@ -22,17 +21,6 @@ export type PasswordChangeState = {
   message?: string;
 };
 
-// 获取数据库客户端
-async function getLibsqlClient() {
-  const { url, authToken } = await getDatabaseConfig();
-
-  if (!url) {
-    throw new Error("未配置数据库 URL，无法连接数据库");
-  }
-
-  return authToken ? createClient({ url, authToken }) : createClient({ url });
-}
-
 // 获取用户信息
 export async function getUserInfo(): Promise<{
   email: string;
@@ -44,20 +32,14 @@ export async function getUserInfo(): Promise<{
   }
 
   try {
-    const client = await getLibsqlClient();
-    const result = await client.execute({
-      sql: "SELECT email, name FROM users WHERE email = ? LIMIT 1",
-      args: [email],
-    });
-
-    if (result.rows.length === 0) {
+    const user = await getUserByEmail(email);
+    if (!user) {
       return null;
     }
 
-    const row = result.rows[0] as unknown as { email: string; name: string | null };
     return {
-      email: row.email,
-      name: row.name,
+      email: user.email,
+      name: user.name,
     };
   } catch (error) {
     console.error("获取用户信息失败:", error);
@@ -115,13 +97,8 @@ export async function updateUserInfo(
   }
 
   try {
-    const client = await getLibsqlClient();
-    
     // 更新用户信息（目前数据库只有 name 字段，phone 可以后续扩展）
-    await client.execute({
-      sql: "UPDATE users SET name = ? WHERE email = ?",
-      args: [name, email],
-    });
+    await updateUser(email, { name });
 
     return { ok: true, message: "个人信息更新成功" };
   } catch (error) {
@@ -157,28 +134,19 @@ export async function changePassword(
   }
 
   try {
-    const client = await getLibsqlClient();
-    
     // 验证当前密码
-    const result = await client.execute({
-      sql: "SELECT password FROM users WHERE email = ? LIMIT 1",
-      args: [email],
-    });
+    const user = await getUserByEmail(email);
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return { ok: false, message: "用户不存在" };
     }
 
-    const row = result.rows[0] as unknown as { password: string };
-    if (row.password !== currentPassword) {
+    if (user.password !== currentPassword) {
       return { ok: false, message: "当前密码不正确" };
     }
 
     // 更新密码
-    await client.execute({
-      sql: "UPDATE users SET password = ? WHERE email = ?",
-      args: [newPassword, email],
-    });
+    await updateUser(email, { password: newPassword });
 
     return { ok: true, message: "密码修改成功" };
   } catch (error) {
@@ -202,13 +170,8 @@ export async function deleteAccountAction(): Promise<void> {
   }
 
   try {
-    const client = await getLibsqlClient();
-    
     // 删除用户
-    await client.execute({
-      sql: "DELETE FROM users WHERE email = ?",
-      args: [email],
-    });
+    await deleteUser(email);
 
     // 删除 session
     await deleteUserSession();

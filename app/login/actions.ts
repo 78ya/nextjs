@@ -1,56 +1,20 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@libsql/client";
-import { getDatabaseConfig } from "@/lib/edge-config";
 import { setUserSession } from "@/lib/cookies";
+import { getUserByEmail, ensureUsersTable } from "@/lib/db";
 
 export type LoginState = {
   ok: boolean;
   message?: string;
 };
 
-type DbUser = {
-  email: string;
-  password: string;
-  name?: string | null;
-};
-
-async function getLibsqlClient() {
-  const { url, authToken } = await getDatabaseConfig();
-
-  if (!url) {
-    throw new Error("未配置数据库 URL，无法连接数据库");
-  }
-
-  return authToken ? createClient({ url, authToken }) : createClient({ url });
-}
-
-async function fetchUser(email: string): Promise<DbUser | null> {
-  const client = await getLibsqlClient();
-
-  // 确保表存在（与注册流程一致）
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS users (
-      email TEXT PRIMARY KEY,
-      password TEXT NOT NULL,
-      name TEXT
-    )
-  `);
-
-  const result = await client.execute({
-    sql: "SELECT email, password, name FROM users WHERE email = ? LIMIT 1",
-    args: [email],
-  });
-
-  if (result.rows.length === 0) return null;
-
-  const row = result.rows[0] as unknown as DbUser;
-  return {
-    email: row.email,
-    password: row.password,
-    name: row.name,
-  };
+async function fetchUser(email: string) {
+  // 确保表存在
+  await ensureUsersTable();
+  
+  // 获取用户信息
+  return await getUserByEmail(email);
 }
 
 export async function loginAction(

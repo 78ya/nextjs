@@ -54,8 +54,10 @@ export default function UserProfileForm({ initialName, initialEmail }: UserProfi
             name="name"
             defaultValue={initialName}
             required
+            placeholder="请输入昵称"
+            aria-label="昵称"
             className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400"
-          />
+            />
         </div>
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -63,8 +65,11 @@ export default function UserProfileForm({ initialName, initialEmail }: UserProfi
           </label>
           <input
             type="email"
+            name="email"
             value={initialEmail}
             disabled
+            aria-label="邮箱地址"
+            title="邮箱地址不可修改"
             className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 cursor-not-allowed"
           />
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">

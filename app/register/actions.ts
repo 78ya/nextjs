@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { getResendApiKey, getEmailApiEndpoint, getEmailFromAddress } from "@/lib/edge-config";
-import { createClient } from "@libsql/client";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import {
@@ -13,6 +12,7 @@ import {
   getRegisterTemp,
   deleteRegisterTemp,
 } from "@/lib/cookies";
+import { saveUserToLibsql } from "@/lib/db";
 
 export type RegisterState = {
   ok: boolean;
@@ -46,22 +46,6 @@ async function getRegisterSuccessTemplate(name: string, email: string): Promise<
   return template.replace("{{NAME}}", name).replace("{{EMAIL}}", email);
 }
 
-// 获取 libsql 客户端
-function getLibsqlClient() {
-  const url = process.env.LIBSQL_URL ?? process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.LIBSQL_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN;
-
-  if (!url) {
-    throw new Error("未配置 LIBSQL_URL/TURSO_DATABASE_URL，无法连接数据库");
-  }
-
-  // authToken 可选，若数据库未开启鉴权则不传
-  return createClient(
-    authToken
-      ? { url, authToken }
-      : { url }
-  );
-}
 
 // 发送邮件
 async function sendEmail(
@@ -282,39 +266,6 @@ export async function verifyCodeAction(
   await deleteRegisterTemp();
 
   redirect("/login");
-}
-
-// 保存用户信息到 libsql 数据库
-async function saveUserToLibsql(
-  email: string,
-  userData: { password: string; name?: string }
-): Promise<void> {
-  const client = getLibsqlClient();
-
-  // 确保表存在
-  await client.execute(`
-    CREATE TABLE IF NOT EXISTS users (
-      email TEXT PRIMARY KEY,
-      password TEXT NOT NULL,
-      name TEXT
-    )
-  `);
-
-  // 检查是否已存在
-  const existing = await client.execute({
-    sql: "SELECT email FROM users WHERE email = ? LIMIT 1",
-    args: [email],
-  });
-
-  if (existing.rows.length > 0) {
-    throw new Error("该邮箱已被注册");
-  }
-
-  // 插入新用户
-  await client.execute({
-    sql: "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
-    args: [email, userData.password, userData.name ?? null],
-  });
 }
 
 

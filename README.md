@@ -8,3 +8,11 @@
 - **TypeScript + ESLint**：提供基础的类型检查与代码规范。
 
 适合作为：Next.js 16 + React 19 + Tailwind CSS 4 + Edge Config 的入门 Demo 或脚手架。
+
+```bash
+# 安装依赖
+npm install
+
+# 运行项目
+npm run dev
+```
