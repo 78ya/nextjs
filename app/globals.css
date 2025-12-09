@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 强制 Tailwind 使用 class 策略来实现暗黑模式 */
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,6 +15,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* 默认支持系统偏好 */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -19,8 +23,44 @@
   }
 }
 
+/* 手动切换支持：当 html 标签有 .dark 类时，强制使用暗色变量 */
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+/* 手动切换支持：当 html 标签有 .light 类时，强制使用亮色变量 (覆盖系统暗色偏好) */
+:root.light {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* 添加全局颜色过渡动画 (在 View Transition 不生效时作为回退) */
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* View Transition API 动画配置 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* 确保 dark 模式下的层级正确 */
+.dark::view-transition-old(root) {
+  z-index: 1;
+}
+.dark::view-transition-new(root) {
+  z-index: 999;
+}
+
+::view-transition-old(root) {
+  z-index: 999;
+}
+::view-transition-new(root) {
+  z-index: 1;
 }

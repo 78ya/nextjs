@@ -92,4 +92,3 @@ export default function UserProfileForm({ initialName, initialEmail }: UserProfi
     </div>
   );
 }
-
