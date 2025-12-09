@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { setUserSession } from "@/lib/cookies";
 import { getUserByEmail, ensureUsersTable } from "@/lib/db";
+import { verifyPassword } from "@/lib/crypto";
 
 export type LoginState = {
   ok: boolean;
@@ -30,7 +31,7 @@ export async function loginAction(
 
   const user = await fetchUser(email);
 
-  if (!user || user.password !== password) {
+  if (!user || !verifyPassword(password, user.password)) {
     return { ok: false, message: "邮箱或密码不正确" };
   }
 

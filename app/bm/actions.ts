@@ -5,6 +5,7 @@ import { getAdminConfig } from "@/lib/edge-config";
 import { setAdminSession } from "@/lib/cookies";
 import { getUserSession, deleteUserSession } from "@/lib/cookies";
 import { getUserByEmail, updateUser, deleteUser } from "@/lib/db";
+import { verifyPassword, hashPassword } from "@/lib/crypto";
 
 export type AdminLoginState = {
   ok: boolean;
@@ -141,12 +142,15 @@ export async function changePassword(
       return { ok: false, message: "用户不存在" };
     }
 
-    if (user.password !== currentPassword) {
+    if (!verifyPassword(currentPassword, user.password)) {
       return { ok: false, message: "当前密码不正确" };
     }
 
+    // 对新密码进行哈希处理
+    const hashedNewPassword = hashPassword(newPassword);
+    
     // 更新密码
-    await updateUser(email, { password: newPassword });
+    await updateUser(email, { password: hashedNewPassword });
 
     return { ok: true, message: "密码修改成功" };
   } catch (error) {

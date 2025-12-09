@@ -28,10 +28,10 @@ export async function saveUserToLibsql(
     throw new Error("该邮箱已被注册");
   }
 
-  // 插入新用户
+  // 插入新用户（role 默认为 'user'）
   await client.execute({
-    sql: "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
-    args: [email, userData.password, userData.name ?? null],
+    sql: "INSERT INTO users (email, password, name, role) VALUES (?, ?, ?, ?)",
+    args: [email, userData.password, userData.name ?? null, 'user'],
   });
 }
 

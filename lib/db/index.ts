@@ -1,5 +1,3 @@
-"use server";
-
 // 导出客户端
 export { getLibsqlClient } from "./client";
 

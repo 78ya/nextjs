@@ -1,6 +1,7 @@
 "use server";
 
 import { tableCreate } from '@/lib/db/schema';
+import { recreateAllTables } from '@/lib/db/recreate';
 
 /**
  * 数据库表初始化接口
@@ -24,8 +25,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // 执行数据库表创建操作
-    await tableCreate();
+    // 检查是否有 force 参数，如果有则强制重建表
+    const body = await request.json().catch(() => ({}));
+    const force = body.force === true || body.force === 'true';
+    
+    if (force) {
+      // 强制重建所有表（会删除所有数据）
+      await recreateAllTables();
+    } else {
+      // 执行数据库表创建操作（如果表已存在则不会更新）
+      await tableCreate();
+    }
 
     return new Response(
       JSON.stringify({
@@ -58,7 +68,7 @@ export async function POST(request: Request) {
 }
 
 // 允许GET请求访问此接口
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // 环境判断 - 仅在开发环境允许执行
     if (process.env.NODE_ENV !== 'development') {
@@ -76,8 +86,17 @@ export async function GET() {
       );
     }
 
-    // 执行数据库表创建操作
-    await tableCreate();
+    // 检查是否有 force 查询参数
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
+    
+    if (force) {
+      // 强制重建所有表（会删除所有数据）
+      await recreateAllTables();
+    } else {
+      // 执行数据库表创建操作（如果表已存在则不会更新）
+      await tableCreate();
+    }
 
     return new Response(
       JSON.stringify({

@@ -13,6 +13,7 @@ import {
   deleteRegisterTemp,
 } from "@/lib/cookies";
 import { saveUserToLibsql } from "@/lib/db";
+import { hashPassword } from "@/lib/crypto";
 
 export type RegisterState = {
   ok: boolean;
@@ -242,8 +243,11 @@ export async function verifyCodeAction(
   }
 
   try {
+    // 对密码进行哈希处理
+    const hashedPassword = hashPassword(registerData.password);
+    
     await saveUserToLibsql(registerData.email, {
-      password: registerData.password,
+      password: hashedPassword,
       name: registerData.name,
     });
 
