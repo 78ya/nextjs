@@ -3,11 +3,13 @@ import {
   ServerIcon,
   LockClosedIcon,
   ChartPieIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 
 export default function AdminPage() {
   const cards = [
     { name: "FRP 观测", href: "/bm/frp-obs", Icon: ChartBarIcon },
+    { name: "域名观测", href: "/bm/domains-obs", Icon: GlobeAltIcon },
     { name: "VPN 观测", href: "/bm/vpn-obs", Icon: LockClosedIcon },
     { name: "服务器观测", href: "/bm/servers-obs", Icon: ServerIcon },
     { name: "数据统计", href: "/bm/statistics", Icon: ChartPieIcon },

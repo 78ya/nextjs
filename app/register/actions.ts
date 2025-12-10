@@ -12,7 +12,7 @@ import {
   getRegisterTemp,
   deleteRegisterTemp,
 } from "@/lib/cookies";
-import { saveUserToLibsql } from "@/lib/db";
+import { saveUserToLibsql, getUserByEmail } from "@/lib/db";
 import { hashPassword } from "@/lib/crypto";
 
 export type RegisterState = {
@@ -186,6 +186,15 @@ export async function sendCodeAction(
   }
 
   try {
+    const existed = await getUserByEmail(email);
+    if (existed) {
+      return {
+        ok: false,
+        message: "该邮箱已注册，请直接登录",
+        step: "info",
+      };
+    }
+
     await sendVerificationCode(email);
     
     await setRegisterTemp({ name, email, password });
@@ -243,6 +252,17 @@ export async function verifyCodeAction(
   }
 
   try {
+    const existed = await getUserByEmail(registerData.email);
+    if (existed) {
+      await deleteRegisterTemp();
+      return {
+        ok: false,
+        message: "该邮箱已注册，请直接登录",
+        step: "verify",
+        email: registerData.email,
+      };
+    }
+
     // 对密码进行哈希处理
     const hashedPassword = hashPassword(registerData.password);
     

@@ -12,6 +12,7 @@ import {
   ServerIcon,
   ShieldCheckIcon,
   UserCircleIcon,
+  GlobeAltIcon,
 } from "@heroicons/react/24/outline";
 import type { ComponentType, SVGProps } from "react";
 
@@ -36,6 +37,7 @@ export const groups: NavGroup[] = [
     items: [
       { name: "FRP 观测", href: "/bm/frp-obs", Icon: CpuChipIcon },
       { name: "服务器观测", href: "/bm/servers-obs", Icon: ServerIcon },
+      { name: "域名观测", href: "/bm/domains-obs", Icon: GlobeAltIcon },
       { name: "VPN 观测", href: "/bm/vpn-obs", Icon: LockClosedIcon },
       { name: "数据统计", href: "/bm/statistics", Icon: ChartPieIcon },
     ],
@@ -47,6 +49,7 @@ export const groups: NavGroup[] = [
       { name: "FRP 管理", href: "/bm/frp-admin", Icon: ShieldCheckIcon },
       { name: "VPN 管理", href: "/bm/vpn-admin", Icon: LockClosedIcon },
       { name: "服务器管理", href: "/bm/servers-admin", Icon: ServerIcon },
+      { name: "域名管理", href: "/bm/domains-admin", Icon: GlobeAltIcon },
       { name: "文章管理", href: "/bm/articles", Icon: ClipboardDocumentListIcon },
       { name: "文章发布", href: "/bm/articles/new", Icon: PencilSquareIcon, adminOnly: true },
     ],
