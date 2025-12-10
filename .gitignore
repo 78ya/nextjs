@@ -3,6 +3,8 @@
 # idea
 /.idea
 
+/cs
+
 # dependencies
 /node_modules
 /.pnp

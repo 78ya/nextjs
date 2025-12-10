@@ -135,7 +135,7 @@ export default function Home() {
               <div
                 key={f.title}
                 className="group rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/40 p-5 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
-              >
+            >
                 <div className="flex items-center gap-3 mb-2">
                   <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xl">
                     {f.icon}

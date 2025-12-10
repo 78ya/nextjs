@@ -11,6 +11,11 @@ export default function APIClient({ route, initialMethods }: APIClientProps) {
   const [selectedMethod, setSelectedMethod] = useState(initialMethods[0] || 'GET');
   const [url, setUrl] = useState(`http://localhost:3000/api${route}`);
   const [requestBody, setRequestBody] = useState('');
+  const [bodyType, setBodyType] = useState<'json' | 'formData'>('json');
+  const [formFields, setFormFields] = useState<Array<{ key: string; value: string }>>([
+    { key: '', value: '' },
+  ]);
+  const [fileInput, setFileInput] = useState<File | null>(null);
   const [response, setResponse] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,28 +32,42 @@ export default function APIClient({ route, initialMethods }: APIClientProps) {
     const startTime = Date.now();
     
     try {
+      const isBodyAllowed = !['GET', 'HEAD'].includes(selectedMethod);
       const fetchOptions: RequestInit = {
         method: selectedMethod,
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         credentials: 'include',
       };
-      
-      // 如果有请求体且不是GET/HEAD请求，则添加请求体
-      if (requestBody && !['GET', 'HEAD'].includes(selectedMethod)) {
-        try {
-          // 验证JSON格式
-          JSON.parse(requestBody);
-          fetchOptions.body = requestBody;
-        } catch (jsonError) {
-          setError('请求体必须是有效的JSON格式');
-          setLoading(false);
-          return;
+
+      if (isBodyAllowed) {
+        if (bodyType === 'json') {
+          if (requestBody) {
+            try {
+              JSON.parse(requestBody);
+              fetchOptions.body = requestBody;
+              fetchOptions.headers = { ...fetchOptions.headers, 'Content-Type': 'application/json' };
+            } catch (jsonError) {
+              setError('请求体必须是有效的JSON格式');
+              setLoading(false);
+              return;
+            }
+          }
+        } else {
+          const formData = new FormData();
+          if (fileInput) {
+            formData.append('file', fileInput, fileInput.name);
+          }
+          formFields.forEach(({ key, value }) => {
+            if (key.trim()) {
+              formData.append(key.trim(), value);
+            }
+          });
+          fetchOptions.body = formData;
         }
       }
-      
+
       const response = await fetch(url, fetchOptions);
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
@@ -120,14 +139,89 @@ export default function APIClient({ route, initialMethods }: APIClientProps) {
 
         {/* 仅在非GET/HEAD请求时显示请求体输入框 */}
         {!['GET', 'HEAD'].includes(selectedMethod) && (
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">请求体 (JSON)</label>
-            <textarea
-              value={requestBody}
-              onChange={(e) => setRequestBody(e.target.value)}
-              placeholder={`{\n  "key": "value"\n}`}
-              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white h-32 font-mono text-sm"
-            />
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">请求体类型</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-sm rounded ${bodyType === 'json' ? 'bg-blue-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'}`}
+                  onClick={() => setBodyType('json')}
+                >
+                  JSON
+                </button>
+                <button
+                  type="button"
+                  className={`px-3 py-1 text-sm rounded ${bodyType === 'formData' ? 'bg-blue-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'}`}
+                  onClick={() => setBodyType('formData')}
+                >
+                  form-data
+                </button>
+              </div>
+            </div>
+
+            {bodyType === 'json' && (
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">请求体 (JSON)</label>
+                <textarea
+                  value={requestBody}
+                  onChange={(e) => setRequestBody(e.target.value)}
+                  placeholder={`{\n  "key": "value"\n}`}
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white h-32 font-mono text-sm"
+                />
+              </div>
+            )}
+
+            {bodyType === 'formData' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">文件 (可选)</label>
+                  <input
+                    type="file"
+                    onChange={(e) => setFileInput(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-zinc-700 dark:text-zinc-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">额外字段</label>
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200"
+                      onClick={() => setFormFields([...formFields, { key: '', value: '' }])}
+                    >
+                      + 添加
+                    </button>
+                  </div>
+                  {formFields.map((field, idx) => (
+                    <div key={idx} className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="键 (例如 file | strategy_id)"
+                        value={field.key}
+                        onChange={(e) => {
+                          const updated = [...formFields];
+                          updated[idx].key = e.target.value;
+                          setFormFields(updated);
+                        }}
+                        className="px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm"
+                      />
+                      <input
+                        type="text"
+                        placeholder="值"
+                        value={field.value}
+                        onChange={(e) => {
+                          const updated = [...formFields];
+                          updated[idx].value = e.target.value;
+                          setFormFields(updated);
+                        }}
+                        className="px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
