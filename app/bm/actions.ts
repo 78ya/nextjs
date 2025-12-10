@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getAdminConfig } from "@/lib/edge-config";
 import { setAdminSession } from "@/lib/cookies";
 import { getUserSession, deleteUserSession } from "@/lib/cookies";
 import { getUserByEmail, updateUser, deleteUser } from "@/lib/db";
 import { verifyPassword, hashPassword } from "@/lib/crypto";
+import { uploadImage } from "@/lib/image-host";
 
 export type AdminLoginState = {
   ok: boolean;
@@ -26,6 +28,7 @@ export type PasswordChangeState = {
 export async function getUserInfo(): Promise<{
   email: string;
   name: string | null;
+  avatar: string | null;
 } | null> {
   const email = await getUserSession();
   if (!email) {
@@ -41,6 +44,7 @@ export async function getUserInfo(): Promise<{
     return {
       email: user.email,
       name: user.name,
+      avatar: user.avatar ?? null,
     };
   } catch (error) {
     console.error("获取用户信息失败:", error);
@@ -92,14 +96,68 @@ export async function updateUserInfo(
 
   const name = String(formData.get("name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const avatarFile = formData.get("avatar");
 
   if (!name) {
     return { ok: false, message: "昵称不能为空" };
   }
 
   try {
-    // 更新用户信息（目前数据库只有 name 字段，phone 可以后续扩展）
-    await updateUser(email, { name });
+    console.info("[bm/updateUserInfo] start", { email });
+
+    let avatarUrl: string | null | undefined = undefined;
+
+    if (avatarFile && avatarFile instanceof File && avatarFile.size > 0) {
+      console.info("[bm/updateUserInfo] uploading avatar", {
+        email,
+        fileName: avatarFile.name,
+        size: avatarFile.size,
+      });
+      const uploaded = await uploadImage({
+        file: avatarFile,
+        filename: avatarFile.name,
+      });
+      avatarUrl = uploaded.url;
+      console.info("[bm/updateUserInfo] avatar uploaded", {
+        email,
+        key: uploaded.key,
+        url: uploaded.url,
+        thumbnail: uploaded.thumbnail_url,
+      });
+    } else {
+      console.info("[bm/updateUserInfo] no avatar file provided", {
+        email,
+        hasFile: avatarFile instanceof File,
+        size: avatarFile instanceof File ? avatarFile.size : null,
+        type: avatarFile instanceof File ? avatarFile.type : typeof avatarFile,
+      });
+    }
+
+    // 更新用户信息（phone 暂不入库，仅 name / avatar）
+    await updateUser(email, { name, avatar: avatarUrl });
+
+    // 调试：读取一次更新后的用户数据，确认 avatar 是否落库
+    try {
+      const fresh = await getUserByEmail(email);
+      console.info("[bm/updateUserInfo] post-update snapshot", {
+        email,
+        hasAvatar: !!fresh?.avatar,
+        avatar: fresh?.avatar,
+        name: fresh?.name,
+      });
+    } catch (e) {
+      console.warn("[bm/updateUserInfo] post-update snapshot failed", { email, error: e });
+    }
+
+    // 重新验证相关页面的缓存
+    revalidatePath("/bm");
+    revalidatePath("/bm/profile");
+
+    console.info("[bm/updateUserInfo] user updated", {
+      email,
+      name,
+      avatar: avatarUrl ?? "unchanged",
+    });
 
     return { ok: true, message: "个人信息更新成功" };
   } catch (error) {

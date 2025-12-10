@@ -4,7 +4,6 @@ import { useState, useEffect, ReactNode } from "react";
 import { redirect } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { getUserInfo } from "../actions";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -14,6 +13,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [userInfo, setUserInfo] = useState<{
     email: string;
     name: string | null;
+    avatar: string | null;
   } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -21,17 +21,31 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   useEffect(() => {
     async function fetchUserInfo() {
-      const info = await getUserInfo();
-      if (!info) {
+      try {
+        const res = await fetch("/api/users/me", {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          redirect("/login");
+          return;
+        }
+        const json = await res.json();
+        if (!json?.success || !json?.data) {
+          redirect("/login");
+          return;
+        }
+        setUserInfo({
+          email: json.data.email,
+          name: json.data.name ?? null,
+          avatar: json.data.avatar ?? null,
+        });
+        setIsAdmin(false); // TODO: 后续从角色判断
+      } catch (error) {
+        console.error("获取用户信息失败:", error);
         redirect("/login");
-        return;
+      } finally {
+        setLoading(false);
       }
-      setUserInfo(info);
-      // TODO: 检查用户是否为管理员
-      // const user = await getUserByEmail(info.email);
-      // setIsAdmin(user?.role === 'admin');
-      setIsAdmin(false); // 临时设置，后续从数据库获取
-      setLoading(false);
     }
     fetchUserInfo();
   }, []);
@@ -65,6 +79,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           onMenuClick={() => setIsMobileMenuOpen(true)}
           userName={displayName}
           userEmail={userInfo.email}
+          userAvatar={userInfo.avatar ?? undefined}
           isAdmin={isAdmin}
         />
         <main className="p-4 lg:p-8">{children}</main>

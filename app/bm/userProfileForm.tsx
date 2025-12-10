@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { updateUserInfo, type UserInfoState } from "./actions";
 
 function SubmitButton() {
@@ -20,11 +21,20 @@ function SubmitButton() {
 interface UserProfileFormProps {
   initialName: string;
   initialEmail: string;
+  initialAvatar?: string | null;
 }
 
-export default function UserProfileForm({ initialName, initialEmail }: UserProfileFormProps) {
+export default function UserProfileForm({ initialName, initialEmail, initialAvatar }: UserProfileFormProps) {
   const initialState: UserInfoState = { ok: true };
   const [state, formAction] = useActionState(updateUserInfo, initialState);
+  const router = useRouter();
+
+  // 成功后刷新页面以获取最新头像（Header 也会更新）
+  useEffect(() => {
+    if (state.ok && state.message) {
+      router.refresh();
+    }
+  }, [state.ok, state.message, router]);
 
   return (
     <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 p-6">
@@ -45,6 +55,33 @@ export default function UserProfileForm({ initialName, initialEmail }: UserProfi
       )}
 
       <form action={formAction} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+            头像
+          </label>
+          <div className="flex items-center gap-4">
+            {initialAvatar ? (
+              <img
+                src={initialAvatar}
+                alt={initialName}
+                className="w-14 h-14 rounded-full ring-2 ring-white dark:ring-zinc-800 object-cover"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 ring-2 ring-white dark:ring-zinc-800">
+                无
+              </div>
+            )}
+            <input
+              type="file"
+              name="avatar"
+              accept="image/*"
+              className="text-sm text-zinc-700 dark:text-zinc-200"
+            />
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            选择新头像后会自动上传并更新
+          </p>
+        </div>
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
             昵称

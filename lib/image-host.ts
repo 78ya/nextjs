@@ -24,7 +24,14 @@ export interface ImageUploadData {
   sha1?: string;
   width?: number;
   height?: number;
-  links?: Record<string, string>;
+  links?: {
+    url?: string;
+    html?: string;
+    bbcode?: string;
+    markdown?: string;
+    markdown_with_link?: string;
+    thumbnail_url?: string;
+  };
 }
 
 export interface ImageListItem {
@@ -172,11 +179,31 @@ function handleUploadResponse(res: Response): Promise<ImageUploadData> {
   }
 
   return res.json().then((json) => {
-    const payload = json as { status?: boolean; data?: ImageUploadData; message?: string };
+    const payload = json as { status?: boolean; data?: any; message?: string };
     if (!payload.status || !payload.data) {
       throw new Error(`上传返回异常: ${payload.message || "无 data 字段"}`);
     }
-    return payload.data;
+    const data = payload.data as ImageUploadData;
+    const url =
+      data.url ||
+      data.links?.url ||
+      data.links?.markdown_with_link ||
+      data.links?.markdown ||
+      data.links?.html ||
+      data.links?.bbcode ||
+      data.pathname ||
+      "";
+    const thumbnail = data.thumbnail_url || data.links?.thumbnail_url;
+
+    if (!url) {
+      console.warn("[image-host] upload response missing url", payload);
+    }
+
+    return {
+      ...data,
+      url,
+      thumbnail_url: thumbnail,
+    };
   });
 }
 

@@ -3,6 +3,25 @@
 import { getLibsqlClient } from "./client";
 import { ensureUsersTable } from "./schema";
 
+// 确保 users 表包含 avatar 列（用于老表迁移）
+async function ensureAvatarColumn(client: Awaited<ReturnType<typeof getLibsqlClient>>): Promise<void> {
+  try {
+    const info = await client.execute({
+      sql: "PRAGMA table_info(users)",
+    });
+    const columns = info.rows.map((row: any) => row.name);
+    if (!columns.includes("avatar")) {
+      console.info("[db/ensureAvatarColumn] adding avatar column");
+      await client.execute({
+        sql: "ALTER TABLE users ADD COLUMN avatar TEXT",
+      });
+      console.info("[db/ensureAvatarColumn] avatar column added");
+    }
+  } catch (error) {
+    console.error("[db/ensureAvatarColumn] failed", error);
+  }
+}
+
 /**
  * 保存用户信息到数据库（注册时使用）
  * @param email 用户邮箱
@@ -44,15 +63,23 @@ export async function getUserByEmail(email: string): Promise<{
   email: string;
   password: string;
   name: string | null;
+  avatar: string | null;
 } | null> {
   const client = await getLibsqlClient();
   
+  // 老表迁移：确保 avatar 列存在
+  await ensureAvatarColumn(client);
+
+  // 调试日志：查询用户
+  console.info("[db/getUserByEmail] query", { email });
+
   const result = await client.execute({
-    sql: "SELECT email, password, name FROM users WHERE email = ? LIMIT 1",
+    sql: "SELECT email, password, name, avatar FROM users WHERE email = ? LIMIT 1",
     args: [email],
   });
 
   if (result.rows.length === 0) {
+    console.warn("[db/getUserByEmail] not found", { email });
     return null;
   }
 
@@ -60,12 +87,20 @@ export async function getUserByEmail(email: string): Promise<{
     email: string;
     password: string;
     name: string | null;
+    avatar: string | null;
   };
   
+  console.info("[db/getUserByEmail] found", {
+    email: row.email,
+    hasAvatar: !!row.avatar,
+    name: row.name,
+  });
+
   return {
     email: row.email,
     password: row.password,
     name: row.name,
+    avatar: row.avatar,
   };
 }
 
@@ -76,9 +111,11 @@ export async function getUserByEmail(email: string): Promise<{
  */
 export async function updateUser(
   email: string,
-  updates: { name?: string; password?: string }
+  updates: { name?: string; password?: string; avatar?: string | null }
 ): Promise<void> {
   const client = await getLibsqlClient();
+  // 老表迁移：确保 avatar 列存在
+  await ensureAvatarColumn(client);
   
   if (updates.password) {
     await client.execute({
@@ -91,6 +128,13 @@ export async function updateUser(
     await client.execute({
       sql: "UPDATE users SET name = ? WHERE email = ?",
       args: [updates.name, email],
+    });
+  }
+
+  if (updates.avatar !== undefined) {
+    await client.execute({
+      sql: "UPDATE users SET avatar = ? WHERE email = ?",
+      args: [updates.avatar, email],
     });
   }
 }

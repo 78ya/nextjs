@@ -13,6 +13,7 @@ export async function GET() {
     const email = await getUserSession();
     
     if (!email) {
+      console.info("[api/users/me] no session, redirect to 401");
       return new Response(
         JSON.stringify({
           success: false,
@@ -28,9 +29,11 @@ export async function GET() {
     }
 
     // 获取用户信息
+    console.info("[api/users/me] fetching user", { email });
     const user = await getUserByEmail(email);
     
     if (!user) {
+      console.warn("[api/users/me] user not found", { email });
       return new Response(
         JSON.stringify({
           success: false,
@@ -45,6 +48,12 @@ export async function GET() {
       );
     }
 
+    console.info("[api/users/me] user found", {
+      email: user.email,
+      hasAvatar: !!user.avatar,
+      name: user.name,
+    });
+
     // 返回用户信息（不包含密码）
     return new Response(
       JSON.stringify({
@@ -52,6 +61,7 @@ export async function GET() {
         data: {
           email: user.email,
           name: user.name,
+          avatar: user.avatar ?? null,
         },
       }),
       {
