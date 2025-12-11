@@ -66,6 +66,27 @@ export interface AppConfig {
 }
 
 /**
+ * 文章表接口
+ */
+export interface Article {
+  id: number;
+  title: string;
+  slug: string;
+  author_email: string;
+  status: "draft" | "published";
+  tags: string[];
+  version: number;
+  current_blob_path: string;
+  blob_url: string;
+  line_count: number;
+  size_bytes: number;
+  created_at: Date;
+  updated_at: Date;
+  published_at?: Date | null;
+  soft_deleted_at?: Date | null;
+}
+
+/**
  * 生成 users 表创建 SQL
  * 存储系统用户信息的核心表
  */
@@ -182,6 +203,38 @@ export async function SessionsTable(): Promise<string> {
 }
 
 /**
+ * 生成 articles 表创建 SQL
+ * 存储文章元数据与最新版本信息
+ */
+export async function ArticlesTable(): Promise<string> {
+  return `
+    CREATE TABLE IF NOT EXISTS articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      author_email TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('draft','published')),
+      tags TEXT,
+      version INTEGER NOT NULL DEFAULT 1,
+      current_blob_path TEXT NOT NULL,
+      blob_url TEXT NOT NULL,
+      line_count INTEGER NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      published_at TIMESTAMP,
+      soft_deleted_at TIMESTAMP,
+      FOREIGN KEY (author_email) REFERENCES users(email) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author_email);
+    CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
+    CREATE INDEX IF NOT EXISTS idx_articles_updated_at ON articles(updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_articles_soft_deleted ON articles(soft_deleted_at);
+  `;
+}
+
+/**
  * 生成 app_config 表创建 SQL
  * 存储应用程序配置项，支持动态配置和参数调整
  */
@@ -268,6 +321,13 @@ export async function ensureAppConfigTable(): Promise<void> {
 }
 
 /**
+ * 确保 articles 表存在
+ */
+export async function ensureArticlesTable(): Promise<void> {
+  await ensureTable(ArticlesTable);
+}
+
+/**
  * 创建所有表
  */
 export async function tableCreate(): Promise<void> {
@@ -279,7 +339,8 @@ export async function tableCreate(): Promise<void> {
     { name: 'user_logs', func: ensureUserLogsTable },
     { name: 'email_verifications', func: ensureEmailVerificationTable },
     { name: 'sessions', func: ensureSessionsTable },
-    { name: 'app_config', func: ensureAppConfigTable }
+    { name: 'app_config', func: ensureAppConfigTable },
+    { name: 'articles', func: ensureArticlesTable }
   ];
   
   // 依次执行所有表创建函数

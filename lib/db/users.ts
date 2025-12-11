@@ -64,6 +64,7 @@ export async function getUserByEmail(email: string): Promise<{
   password: string;
   name: string | null;
   avatar: string | null;
+  role: string | null;
 } | null> {
   const client = await getLibsqlClient();
   
@@ -74,7 +75,7 @@ export async function getUserByEmail(email: string): Promise<{
   console.info("[db/getUserByEmail] query", { email });
 
   const result = await client.execute({
-    sql: "SELECT email, password, name, avatar FROM users WHERE email = ? LIMIT 1",
+    sql: "SELECT email, password, name, avatar, role FROM users WHERE email = ? LIMIT 1",
     args: [email],
   });
 
@@ -88,12 +89,14 @@ export async function getUserByEmail(email: string): Promise<{
     password: string;
     name: string | null;
     avatar: string | null;
+    role: string | null;
   };
   
   console.info("[db/getUserByEmail] found", {
     email: row.email,
     hasAvatar: !!row.avatar,
     name: row.name,
+    role: row.role,
   });
 
   return {
@@ -101,6 +104,7 @@ export async function getUserByEmail(email: string): Promise<{
     password: row.password,
     name: row.name,
     avatar: row.avatar,
+    role: row.role,
   };
 }
 

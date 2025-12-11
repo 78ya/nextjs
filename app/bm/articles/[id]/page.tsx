@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -13,8 +13,11 @@ import {
 const MAX_MD_BYTES = 1024 * 1024;
 const MAX_MD_LINES = 1000;
 
-export default function ArticleNewPage() {
+export default function ArticleEditPage() {
   const router = useRouter();
+  const params = useParams();
+  const articleId = params?.id as string;
+
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [tags, setTags] = useState("");
@@ -23,24 +26,8 @@ export default function ArticleNewPage() {
   const [mdFile, setMdFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const dropRef = useRef<HTMLDivElement | null>(null);
-
-  const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const files = Array.from(e.dataTransfer.files || []);
-    if (files.length === 0) return;
-
-    for (const file of files) {
-      if (file.type.startsWith("image/")) {
-        await handleImageUpload(file);
-      } else if (file.name.toLowerCase().endsWith(".md")) {
-        await handleMdFile(file);
-      } else {
-        setError("仅支持 .md 或图片文件");
-      }
-    }
-  };
 
   const handleMdFile = async (file: File) => {
     if (file.size > MAX_MD_BYTES) {
@@ -62,6 +49,7 @@ export default function ArticleNewPage() {
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("articleId", articleId);
       const res = await fetch("/api/articles/upload-image", {
         method: "POST",
         body: form,
@@ -75,6 +63,45 @@ export default function ArticleNewPage() {
       setError(err?.message || "图片上传失败");
     }
   };
+
+  const loadArticle = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/articles/${articleId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "加载失败");
+      }
+      const article = data.article;
+      setTitle(article.title);
+      setSlug(article.slug);
+      setStatus(article.status);
+      setTags((article.tags || []).join(", "));
+      setContent(article.content || "");
+      setLoaded(true);
+    } catch (err: any) {
+      setError(err?.message || "加载失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadArticle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleId]);
+
+  useEffect(() => {
+    const dropArea = dropRef.current;
+    if (!dropArea) return;
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    dropArea.addEventListener("dragover", handleDragOver);
+    return () => dropArea.removeEventListener("dragover", handleDragOver);
+  }, []);
 
   const handleSubmit = async (publish: boolean) => {
     setLoading(true);
@@ -91,40 +118,30 @@ export default function ArticleNewPage() {
         formData.append("content", content);
       }
 
-      const res = await fetch("/api/articles", {
-        method: "POST",
+      const res = await fetch(`/api/articles/${articleId}`, {
+        method: "PUT",
         body: formData,
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
         throw new Error(data?.message || "保存失败");
       }
-      router.push(`/bm/articles/${data.article.id}`);
+      await loadArticle();
     } catch (err: any) {
       setError(err?.message || "保存失败");
     } finally {
       setLoading(false);
+      setMdFile(null);
     }
   };
-
-  useEffect(() => {
-    const dropArea = dropRef.current;
-    if (!dropArea) return;
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-    dropArea.addEventListener("dragover", handleDragOver);
-    return () => dropArea.removeEventListener("dragover", handleDragOver);
-  }, []);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">文章发布</h1>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">编辑文章</h1>
           <p className="text-zinc-600 dark:text-zinc-400 mt-1">
-            支持拖拽 .md / 图片，实时预览
+            ID: {articleId}，支持拖拽 .md / 图片，实时预览
           </p>
         </div>
         <button
@@ -154,6 +171,7 @@ export default function ArticleNewPage() {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="请输入标题"
                 className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
+                disabled={!loaded}
               />
             </div>
             <div>
@@ -165,6 +183,7 @@ export default function ArticleNewPage() {
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder="自定义 slug，需唯一"
                 className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
+                disabled={!loaded}
               />
             </div>
           </div>
@@ -178,6 +197,7 @@ export default function ArticleNewPage() {
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="tag1, tag2"
                 className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
+                disabled={!loaded}
               />
             </div>
             <div>
@@ -188,6 +208,7 @@ export default function ArticleNewPage() {
                 value={status}
                 onChange={(e) => setStatus(e.target.value as "draft" | "published")}
                 className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
+                disabled={!loaded}
               >
                 <option value="draft">草稿</option>
                 <option value="published">发布</option>
@@ -197,7 +218,19 @@ export default function ArticleNewPage() {
 
           <div
             ref={dropRef}
-            onDrop={onDrop}
+            onDrop={(e) => {
+              e.preventDefault();
+              const files = Array.from(e.dataTransfer.files || []);
+              for (const file of files) {
+                if (file.type.startsWith("image/")) {
+                  handleImageUpload(file);
+                } else if (file.name.toLowerCase().endsWith(".md")) {
+                  handleMdFile(file);
+                } else {
+                  setError("仅支持 .md 或图片文件");
+                }
+              }
+            }}
             className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-4 bg-zinc-50 dark:bg-zinc-900/60 flex flex-col items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400"
           >
             <CloudArrowUpIcon className="h-8 w-8 text-zinc-400" />
@@ -213,6 +246,7 @@ export default function ArticleNewPage() {
                     const file = e.target.files?.[0];
                     if (file) handleMdFile(file);
                   }}
+                  disabled={!loaded}
                 />
               </label>
               <label className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800">
@@ -226,6 +260,7 @@ export default function ArticleNewPage() {
                     const file = e.target.files?.[0];
                     if (file) handleImageUpload(file);
                   }}
+                  disabled={!loaded}
                 />
               </label>
             </div>
@@ -243,18 +278,19 @@ export default function ArticleNewPage() {
             rows={14}
             placeholder="编写 Markdown 内容，支持粘贴/拖拽图片自动插入链接"
             className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400"
+            disabled={!loaded}
           />
 
           <div className="flex justify-end gap-3">
             <button
-              disabled={loading}
+              disabled={loading || !loaded}
               onClick={() => handleSubmit(false)}
               className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-60"
             >
               保存草稿
             </button>
             <button
-              disabled={loading}
+              disabled={loading || !loaded}
               onClick={() => handleSubmit(true)}
               className="px-4 py-2 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-60"
             >
@@ -271,7 +307,7 @@ export default function ArticleNewPage() {
             </span>
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || "开始输入以预览..."}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || (loaded ? "开始输入以预览..." : "加载中...")}</ReactMarkdown>
           </div>
         </div>
       </div>
