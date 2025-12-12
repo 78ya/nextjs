@@ -256,7 +256,10 @@ export default function DomainRecordsPage({ params }: { params: { id: string } }
                     setCreateForm({ type: "A", name: "", content: "", ttl: 300, priority: "", proxied: false });
                     Promise.resolve(params)
                       .then((p) => p.id)
-                      .then((id) => id && load(id));
+                      .then((id) => {
+                        if (id) return load(id);
+                      })
+                      .catch((err) => console.error(err));
                   } catch (err: any) {
                     alert(err?.message || "创建失败");
                   } finally {
