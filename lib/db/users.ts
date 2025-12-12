@@ -314,8 +314,8 @@ export async function createRoleRequest(params: {
     sql: `INSERT INTO role_requests (user_id, target_role, reason, status) VALUES (?, ?, ?, 'pending')`,
     args: [params.userId, params.targetRole, params.reason ?? null],
   });
-  const id = (res.lastInsertRowid as number) ?? 0;
-  return id;
+  const id = res.lastInsertRowid ?? 0;
+  return Number(id);
 }
 
 export async function updateRoleRequest(params: {
