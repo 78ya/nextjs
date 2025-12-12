@@ -16,6 +16,8 @@ export interface User {
   phone?: string;
   avatar?: string;
   role: string;
+  status?: string;
+  created_at?: Date;
 }
 
 /**
@@ -107,12 +109,18 @@ export async function UsersTable(): Promise<string> {
       phone TEXT,
       -- 用户头像URL（可选）
       avatar TEXT,
-      -- 用户角色，如'admin'、'user'等
-      role TEXT NOT NULL
+      -- 用户角色，如'editor'、'admin'、'superadmin' 等
+      role TEXT NOT NULL DEFAULT 'editor',
+      -- 用户状态，active / disabled
+      status TEXT NOT NULL DEFAULT 'active',
+      -- 创建时间
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     
     -- 为常用查询字段添加索引
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+    CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
   `;
 }
 
@@ -235,6 +243,57 @@ export async function ArticlesTable(): Promise<string> {
 }
 
 /**
+ * 角色申请表（自助升级）
+ */
+export async function RoleRequestsTable(): Promise<string> {
+  return `
+    CREATE TABLE IF NOT EXISTS role_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      target_role TEXT NOT NULL,
+      reason TEXT,
+      status TEXT NOT NULL DEFAULT 'pending', -- pending/approved/rejected
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      reviewed_by INTEGER,
+      reviewed_at TIMESTAMP,
+      remark TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_role_requests_user ON role_requests(user_id);
+    CREATE INDEX IF NOT EXISTS idx_role_requests_status ON role_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_role_requests_created ON role_requests(created_at DESC);
+  `;
+}
+
+/**
+ * 审计日志表（角色变更、启用禁用等）
+ */
+export async function AuditLogsTable(): Promise<string> {
+  return `
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      actor_id INTEGER,
+      target_user_id INTEGER,
+      action TEXT NOT NULL, -- role_change / disable / enable
+      before_role TEXT,
+      after_role TEXT,
+      before_status TEXT,
+      after_status TEXT,
+      ip TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_target ON audit_logs(target_user_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
+  `;
+}
+
+/**
  * 生成 app_config 表创建 SQL
  * 存储应用程序配置项，支持动态配置和参数调整
  */
@@ -327,6 +386,14 @@ export async function ensureArticlesTable(): Promise<void> {
   await ensureTable(ArticlesTable);
 }
 
+export async function ensureRoleRequestsTable(): Promise<void> {
+  await ensureTable(RoleRequestsTable);
+}
+
+export async function ensureAuditLogsTable(): Promise<void> {
+  await ensureTable(AuditLogsTable);
+}
+
 /**
  * 创建所有表
  */
@@ -340,7 +407,9 @@ export async function tableCreate(): Promise<void> {
     { name: 'email_verifications', func: ensureEmailVerificationTable },
     { name: 'sessions', func: ensureSessionsTable },
     { name: 'app_config', func: ensureAppConfigTable },
-    { name: 'articles', func: ensureArticlesTable }
+    { name: 'articles', func: ensureArticlesTable },
+    { name: 'role_requests', func: ensureRoleRequestsTable },
+    { name: 'audit_logs', func: ensureAuditLogsTable }
   ];
   
   // 依次执行所有表创建函数

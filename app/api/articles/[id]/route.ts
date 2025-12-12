@@ -33,11 +33,16 @@ function parseTags(input: any): string[] {
   return [];
 }
 
+const ADMIN_ROLES = ["admin", "superadmin"];
+
 async function getAuth() {
   const email = await getUserSession();
-  if (!email) return { email: null, isAdmin: false };
+  if (!email) return { email: null, role: null, isAdmin: false, status: null };
   const user = await getUserByEmail(email);
-  return { email, isAdmin: user?.role === "admin" };
+  const role = user?.role || null;
+  const isAdmin = ADMIN_ROLES.includes(role || "");
+  const status = user?.status ?? null;
+  return { email, role, isAdmin, status };
 }
 
 async function readContent(content: any, nameHint?: string) {
@@ -87,7 +92,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { email, isAdmin } = await getAuth();
+    const { email, isAdmin, status, role } = await getAuth();
     const { id } = await context.params;
     const articleId = Number(id);
     if (!Number.isFinite(articleId)) {
@@ -95,6 +100,13 @@ export async function GET(
     }
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
+    }
+    if (status === "disabled") {
+      return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
+    }
+    const allowedRole = role === "editor" || isAdmin;
+    if (!allowedRole) {
+      return NextResponse.json({ message: "无权限" }, { status: 403 });
     }
     const article = await findById(articleId);
     if (!article) {
@@ -117,7 +129,7 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { email, isAdmin } = await getAuth();
+    const { email, isAdmin, status, role } = await getAuth();
     const { id } = await context.params;
     const articleId = Number(id);
     if (!Number.isFinite(articleId)) {
@@ -125,6 +137,13 @@ export async function PUT(
     }
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
+    }
+    if (status === "disabled") {
+      return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
+    }
+    const allowedRole = role === "editor" || isAdmin;
+    if (!allowedRole) {
+      return NextResponse.json({ message: "无权限" }, { status: 403 });
     }
     const existing = await findById(articleId);
     if (!existing) {
@@ -217,7 +236,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { email, isAdmin } = await getAuth();
+    const { email, isAdmin, status, role } = await getAuth();
     const { id } = await context.params;
     const articleId = Number(id);
     if (!Number.isFinite(articleId)) {
@@ -225,6 +244,13 @@ export async function DELETE(
     }
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
+    }
+    if (status === "disabled") {
+      return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
+    }
+    const allowedRole = role === "editor" || isAdmin;
+    if (!allowedRole) {
+      return NextResponse.json({ message: "无权限" }, { status: 403 });
     }
     const existing = await findById(articleId);
     if (!existing) {
@@ -247,7 +273,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { email, isAdmin } = await getAuth();
+    const { email, isAdmin, status } = await getAuth();
     const { id } = await context.params;
     const articleId = Number(id);
     if (!Number.isFinite(articleId)) {
@@ -255,6 +281,9 @@ export async function PATCH(
     }
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
+    }
+    if (status === "disabled") {
+      return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
     }
     if (!isAdmin) {
       return NextResponse.json({ message: "仅管理员可恢复" }, { status: 403 });

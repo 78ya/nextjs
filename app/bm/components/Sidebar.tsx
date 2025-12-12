@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
-import { groups, topLogoIcon as HomeIcon, type NavGroup, type NavItem } from "./sidebarConfig";
+import { useEffect, useMemo, useState } from "react";
+import {
+  staticGroups,
+  topLogoIcon as HomeIcon,
+  iconMap,
+  type NavGroup,
+  type NavItem,
+} from "./sidebarConfig";
+import { FolderIcon } from "@heroicons/react/24/outline";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -13,6 +20,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isAdmin = false, isMobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
+  const [groups, setGroups] = useState<NavGroup[]>(staticGroups);
+  const [loadingNav, setLoadingNav] = useState(false);
   const allItems = useMemo(
     () =>
       groups.flatMap((group) =>
@@ -41,6 +50,58 @@ export default function Sidebar({ isAdmin = false, isMobileOpen = false, onMobil
   const toggleGroup = (label: string) => {
     setOpenLabel((prev) => (prev === label ? null : label));
   };
+
+  useEffect(() => {
+    const loadNav = async () => {
+      setLoadingNav(true);
+      try {
+        const res = await fetch("/api/nav", { cache: "no-store" });
+        if (!res.ok) throw new Error("导航加载失败");
+        const data = await res.json();
+        const items = (data?.items || []) as Array<{
+          parent_label: string | null;
+          title: string;
+          href: string;
+          permission?: string | null;
+          icon?: string | null;
+          admin_only?: number;
+        }>;
+
+        if (!items.length) return;
+
+        const grouped: Record<string, NavGroup> = {};
+        for (const item of items) {
+          const label = item.parent_label || "未分组";
+          if (!grouped[label]) {
+            grouped[label] = {
+              label,
+              icon: iconMap[item.icon || ""] || FolderIcon,
+              items: [],
+              adminOnly: false,
+            };
+          }
+          grouped[label].items.push({
+            name: item.title,
+            href: item.href,
+            Icon: iconMap[item.icon || ""] || FolderIcon,
+            adminOnly: Boolean(item.admin_only),
+            permission: item.permission ?? null,
+          });
+        }
+
+        const sorted = Object.values(grouped).sort((a, b) => a.label.localeCompare(b.label));
+        sorted.forEach((g) => g.items.sort((a, b) => a.href.localeCompare(b.href)));
+        setGroups(sorted);
+      } catch (err) {
+        console.warn("[Sidebar] load nav failed, fallback static", err);
+        setGroups(staticGroups);
+      } finally {
+        setLoadingNav(false);
+      }
+    };
+
+    loadNav();
+  }, []);
   
   return (
     <>

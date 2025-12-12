@@ -8,8 +8,14 @@ export { ensureUsersTable } from "./schema";
 export {
   saveUserToLibsql,
   getUserByEmail,
+  getUserById,
   updateUser,
   deleteUser,
+  listUsersAdmin,
+  updateUserRoleStatusById,
+  createRoleRequest,
+  updateRoleRequest,
+  logAudit,
 } from "./users";
 
 // 文章相关

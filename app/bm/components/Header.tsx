@@ -18,6 +18,19 @@ export default function Header({
   userAvatar,
   isAdmin = false,
 }: HeaderProps) {
+  const envRaw =
+    process.env.NEXT_PUBLIC_APP_ENV ||
+    process.env.VERCEL_ENV ||
+    process.env.NODE_ENV;
+  const envLabel =
+    envRaw && envRaw !== "production"
+      ? envRaw === "development"
+        ? "开发环境"
+        : envRaw === "preview"
+          ? "测试环境"
+          : `环境：${envRaw}`
+      : null;
+
   return (
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200/50 dark:border-zinc-800/50 transition-colors duration-300">
       <div className="flex items-center justify-between h-20 px-4 lg:px-8">
@@ -43,9 +56,17 @@ export default function Header({
             </svg>
           </button>
           <div className="hidden lg:block">
-             <h1 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200">
-              {isAdmin ? '管理员控制台' : '用户中心'}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold text-zinc-800 dark:text-zinc-200">
+                {isAdmin ? "管理员控制台" : "用户中心"}
+              </h1>
+              {envLabel && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+                  {envLabel}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-500">
               {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
             </p>

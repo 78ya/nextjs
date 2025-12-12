@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Session {
   id: string;
@@ -14,49 +14,59 @@ interface Session {
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // TODO: 从 API 获取会话数据
-  const mockSessions: Session[] = [
-    {
-      id: "1",
-      device: "Windows 10",
-      browser: "Chrome 120.0",
-      ip: "192.168.1.100",
-      location: "北京, 中国",
-      lastActive: new Date().toISOString(),
-      isCurrent: true,
-    },
-    {
-      id: "2",
-      device: "macOS 14.0",
-      browser: "Safari 17.0",
-      ip: "192.168.1.101",
-      location: "上海, 中国",
-      lastActive: new Date(Date.now() - 3600000).toISOString(),
-      isCurrent: false,
-    },
-    {
-      id: "3",
-      device: "iPhone 15",
-      browser: "Safari Mobile",
-      ip: "192.168.1.102",
-      location: "广州, 中国",
-      lastActive: new Date(Date.now() - 86400000).toISOString(),
-      isCurrent: false,
-    },
-  ];
-
-  const handleRevoke = (sessionId: string) => {
-    if (confirm("确定要撤销此会话吗？")) {
-      // TODO: 调用 API 撤销会话
-      setSessions(sessions.filter((s) => s.id !== sessionId));
+  const loadSessions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/sessions", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) throw new Error(data?.message || "获取会话失败");
+      setSessions(data.items || []);
+    } catch (err: any) {
+      setError(err?.message || "加载失败");
+      setSessions([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRevokeAll = () => {
-    if (confirm("确定要撤销所有其他会话吗？")) {
-      // TODO: 调用 API 撤销所有其他会话
-      setSessions(sessions.filter((s) => s.isCurrent));
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
+  const handleRevoke = async (sessionId: string) => {
+    if (!confirm("确定要撤销此会话吗？")) return;
+    try {
+      const res = await fetch("/api/sessions", { method: "DELETE" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.message || "撤销失败");
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      // 当前会话被撤销，刷新页面以清理状态
+      if (sessionId === "current") {
+        window.location.href = "/login";
+      }
+    } catch (err: any) {
+      alert(err?.message || "撤销失败");
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    if (!confirm("确定要撤销所有其他会话吗？")) return;
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revoke_others" }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error(data?.message || "撤销失败");
+      // 由于目前仅跟踪当前会话，保持当前
+      setSessions((prev) => prev.filter((s) => s.isCurrent));
+    } catch (err: any) {
+      alert(err?.message || "撤销失败");
     }
   };
 
@@ -82,7 +92,7 @@ export default function SessionsPage() {
 
       {/* 会话列表 */}
       <div className="space-y-4">
-        {mockSessions.map((session) => (
+        {sessions.map((session) => (
           <div
             key={session.id}
             className="bg-white dark:bg-zinc-900 rounded-xl shadow-md border border-zinc-200 dark:border-zinc-800 p-6"

@@ -39,12 +39,27 @@ function parseTags(input: any): string[] {
   return [];
 }
 
+function generateSlug(title: string) {
+  const clean = title
+    .toLowerCase()
+    .trim()
+    .replace(/[\s/\\]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const suffix = Date.now().toString(36);
+  return `${clean || "article"}-${suffix}`;
+}
+
+const ADMIN_ROLES = ["admin", "superadmin"];
+
 async function getAuthUser() {
   const email = await getUserSession();
-  if (!email) return { email: null, isAdmin: false };
+  if (!email) return { email: null, role: null, isAdmin: false, status: null };
   const user = await getUserByEmail(email);
-  const isAdmin = user?.role === "admin";
-  return { email, isAdmin };
+  const isAdmin = ADMIN_ROLES.includes(user?.role || "");
+  const status = user?.status ?? null;
+  return { email, role: user?.role || null, isAdmin, status };
 }
 
 async function parseContentFromRequest(
@@ -55,7 +70,7 @@ async function parseContentFromRequest(
   if (contentType.includes("multipart/form-data")) {
     const formData = await req.formData();
     const title = String(formData.get("title") ?? "").trim();
-    const slug = String(formData.get("slug") ?? "").trim();
+    let slug = String(formData.get("slug") ?? "").trim();
     const statusRaw = String(formData.get("status") ?? "draft").trim();
     const status = statusRaw === "published" ? "published" : "draft";
     const tags = parseTags(formData.getAll("tags"));
@@ -98,7 +113,7 @@ async function parseContentFromRequest(
       throw new Error("标题不能为空");
     }
     if (!slug) {
-      throw new Error("slug 不能为空");
+      slug = generateSlug(title);
     }
 
     return {
@@ -112,7 +127,7 @@ async function parseContentFromRequest(
 
   const body = await req.json();
   const title = String(body.title ?? "").trim();
-  const slug = String(body.slug ?? "").trim();
+  let slug = String(body.slug ?? "").trim();
   const statusRaw = String(body.status ?? "draft").trim();
   const status = statusRaw === "published" ? "published" : "draft";
   const tags = parseTags(body.tags);
@@ -122,7 +137,7 @@ async function parseContentFromRequest(
     throw new Error("标题不能为空");
   }
   if (!slug) {
-    throw new Error("slug 不能为空");
+    slug = generateSlug(title);
   }
 
   const encoded = new TextEncoder().encode(content);
@@ -141,9 +156,12 @@ async function parseContentFromRequest(
 
 export async function GET(req: NextRequest) {
   try {
-    const { email, isAdmin } = await getAuthUser();
+    const { email, isAdmin, status } = await getAuthUser();
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
+    }
+    if (status === "disabled") {
+      return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -182,18 +200,25 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   let articleId: number | null = null;
   try {
-    const { email, isAdmin } = await getAuthUser();
+    const { email, role, isAdmin, status } = await getAuthUser();
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
     }
+    if (status === "disabled") {
+      return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
+    }
+    const allowed = role === "editor" || ADMIN_ROLES.includes(role || "");
+    if (!allowed) {
+      return NextResponse.json({ message: "无权限" }, { status: 403 });
+    }
 
-    const { contentInfo, title, slug, status, tags } = await parseContentFromRequest(req);
+    const { contentInfo, title, slug, status: contentStatus, tags } = await parseContentFromRequest(req);
 
     if (await slugExists(slug)) {
       return NextResponse.json({ message: "slug 已存在，请更换" }, { status: 400 });
     }
 
-    const publishedAt = status === "published" ? new Date().toISOString() : null;
+    const publishedAt = contentStatus === "published" ? new Date().toISOString() : null;
     const client = await getLibsqlClient();
     await ensureArticles();
 
@@ -209,7 +234,7 @@ export async function POST(req: NextRequest) {
         title,
         slug,
         email,
-        status,
+        contentStatus,
         JSON.stringify(tags.slice(0, 5)),
         "pending",
         "pending",

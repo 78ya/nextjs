@@ -10,8 +10,9 @@ async function fetchContent(url: string): Promise<string> {
   return res.text();
 }
 
-export default async function ArticleViewPage({ params }: { params: { slug: string } }) {
-  const article = await findBySlug(params.slug);
+export default async function ArticleViewPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = await findBySlug(slug);
 
   if (!article || article.status !== "published" || article.soft_deleted_at) {
     return (

@@ -21,6 +21,7 @@ export interface NavItem {
   href: string;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   adminOnly?: boolean;
+  permission?: string | null;
 }
 
 export interface NavGroup {
@@ -30,7 +31,23 @@ export interface NavGroup {
   adminOnly?: boolean;
 }
 
-export const groups: NavGroup[] = [
+export const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+  ChartBarIcon,
+  ChartPieIcon,
+  CpuChipIcon,
+  ServerIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  ClipboardDocumentListIcon,
+  PencilSquareIcon,
+  ShieldCheckIcon,
+  AdjustmentsHorizontalIcon,
+  UserCircleIcon,
+  FolderIcon,
+  HomeIcon,
+};
+
+export const staticGroups: NavGroup[] = [
   {
     label: "仪表盘",
     icon: ChartBarIcon,

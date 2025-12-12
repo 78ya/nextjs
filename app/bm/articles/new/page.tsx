@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -16,7 +16,6 @@ const MAX_MD_LINES = 1000;
 export default function ArticleNewPage() {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
   const [tags, setTags] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [content, setContent] = useState("");
@@ -24,6 +23,18 @@ export default function ArticleNewPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropRef = useRef<HTMLDivElement | null>(null);
+
+  const autoSlug = useMemo(() => {
+    const clean = title
+      .toLowerCase()
+      .trim()
+      .replace(/[\s/\\]+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const suffix = Date.now().toString(36);
+    return `${clean || "article"}-${suffix}`;
+  }, [title]);
 
   const onDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -82,7 +93,7 @@ export default function ArticleNewPage() {
     try {
       const formData = new FormData();
       formData.append("title", title.trim());
-      formData.append("slug", slug.trim());
+      formData.append("slug", autoSlug);
       formData.append("status", publish ? "published" : "draft");
       if (tags.trim()) formData.append("tags", tags.trim());
       if (mdFile) {
@@ -158,14 +169,11 @@ export default function ArticleNewPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                slug
+                URL（自动生成）
               </label>
-              <input
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="自定义 slug，需唯一"
-                className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm"
-              />
+              <div className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-300 break-all">
+                /articles/{autoSlug}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

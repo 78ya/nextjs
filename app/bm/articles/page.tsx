@@ -81,6 +81,10 @@ export default function ArticlesPage() {
       }) : queryString}`;
 
       const res = await fetch(url);
+      if (res.status === 401 || res.status === 403) {
+        setHasMore(false);
+        throw new Error("暂无权限访问文章列表");
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "获取失败");
 
@@ -89,6 +93,7 @@ export default function ArticlesPage() {
       setHasMore(data.hasMore);
     } catch (e: any) {
       setError(e?.message || "加载失败");
+      setHasMore(false);
     } finally {
       setLoading(false);
       setRefreshing(false);
