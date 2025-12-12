@@ -73,7 +73,13 @@ export default function DomainRecordsPage({ params }: { params: { id: string } }
             返回列表
           </Link>
           <button
-            onClick={() => Promise.resolve(params).then((p) => p.id && load(p.id))}
+            onClick={() =>
+              Promise.resolve(params)
+                .then((p) => {
+                  if (p.id) return load(p.id);
+                })
+                .catch((err) => console.error(err))
+            }
             className="px-3 py-1.5 text-sm rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             刷新
