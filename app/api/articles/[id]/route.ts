@@ -92,7 +92,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { email, isAdmin, status, role } = await getAuth();
+    const { email, isAdmin, status: userStatus, role } = await getAuth();
     const { id } = await context.params;
     const articleId = Number(id);
     if (!Number.isFinite(articleId)) {
@@ -101,7 +101,7 @@ export async function GET(
     if (!email) {
       return NextResponse.json({ message: "未登录" }, { status: 401 });
     }
-    if (status === "disabled") {
+    if (userStatus === "disabled") {
       return NextResponse.json({ message: "账号已禁用" }, { status: 403 });
     }
     const allowedRole = role === "editor" || isAdmin;
@@ -156,7 +156,7 @@ export async function PUT(
     const contentType = req.headers.get("content-type") || "";
     let title = "";
     let slug = "";
-    let status: "draft" | "published" = "draft";
+    let articleStatus: "draft" | "published" = "draft";
     let tags: string[] = [];
     let contentBlob: File | string | null = null;
     let fileNameHint = "";
@@ -166,7 +166,7 @@ export async function PUT(
       title = String(formData.get("title") ?? "").trim();
       slug = String(formData.get("slug") ?? "").trim();
       const statusRaw = String(formData.get("status") ?? "draft").trim();
-      status = statusRaw === "published" ? "published" : "draft";
+      articleStatus = statusRaw === "published" ? "published" : "draft";
       tags = parseTags(formData.getAll("tags"));
       const file = formData.get("file");
       const contentField = formData.get("content");
@@ -181,7 +181,7 @@ export async function PUT(
       title = String(body.title ?? "").trim();
       slug = String(body.slug ?? "").trim();
       const statusRaw = String(body.status ?? "draft").trim();
-      status = statusRaw === "published" ? "published" : "draft";
+      articleStatus = statusRaw === "published" ? "published" : "draft";
       tags = parseTags(body.tags);
       contentBlob = String(body.content ?? "");
     }
@@ -207,7 +207,7 @@ export async function PUT(
     });
 
     const nextPublishedAt =
-      status === "published"
+      articleStatus === "published"
         ? existing.published_at ?? new Date().toISOString()
         : null;
 
@@ -215,7 +215,7 @@ export async function PUT(
       id: articleId,
       title,
       slug,
-      status,
+      status: articleStatus,
       tags,
       blobPath: uploaded.pathname || filePath,
       blobUrl: uploaded.url,
