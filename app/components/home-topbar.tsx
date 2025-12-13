@@ -86,12 +86,14 @@ export function HomeTopBar({ siteTitle = "78ya 博客" }: Props) {
   return (
     <div className="pointer-events-none fixed top-0 left-0 right-0 z-50 flex justify-center">
       <div
-        className={`pointer-events-auto mx-auto mt-3 flex w-full max-w-6xl items-center justify-between rounded-2xl border border-zinc-200/80 bg-white/80 px-4 py-2 shadow-sm backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-900/80 transition-transform duration-300 ${
+        className={`pointer-events-auto mx-auto mt-3 flex w-full max-w-6xl min-w-0 items-center justify-between rounded-2xl border border-zinc-200/80 bg-white/80 px-4 py-2 shadow-sm backdrop-blur dark:border-zinc-800/80 dark:bg-zinc-900/80 transition-transform duration-300 ${
           hidden ? "-translate-y-[120%]" : "translate-y-0"
         }`}
       >
-        <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{siteTitle}</div>
-        <div className="flex items-center gap-3">
+        <div className="min-w-0 text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">
+          {siteTitle}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
           {!user && !loadingUser && (
             <Link
               href="/login"
