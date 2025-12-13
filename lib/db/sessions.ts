@@ -1,5 +1,3 @@
-"use server";
-
 import crypto from "crypto";
 import { getLibsqlClient } from "./client";
 import { ensureSessionsTable, ensureUsersTable } from "./schema";
