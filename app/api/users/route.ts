@@ -1,5 +1,3 @@
-"use server";
-
 import { getLibsqlClient } from "@/lib/db/client";
 import { ensureUsersTable } from "@/lib/db/schema";
 import { getUserSession } from "@/lib/cookies";

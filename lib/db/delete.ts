@@ -1,5 +1,3 @@
-"use server";
-
 // 导入数据库客户端
 import { getLibsqlClient } from "./client";
 

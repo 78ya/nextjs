@@ -1,5 +1,3 @@
-"use server";
-
 import { getLibsqlClient } from "./client";
 import { ensureUsersTable, ensureRoleRequestsTable, ensureAuditLogsTable } from "./schema";
 

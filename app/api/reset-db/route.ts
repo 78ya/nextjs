@@ -1,5 +1,3 @@
-"use server";
-
 import { tableInDelete } from '@/lib/db/delete';
 
 /**

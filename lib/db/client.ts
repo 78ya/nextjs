@@ -1,5 +1,3 @@
-"use server";
-
 import { createClient } from "@libsql/client";
 import { getDatabaseConfig } from "@/lib/edge-config";
 import type { Client } from "@libsql/client";

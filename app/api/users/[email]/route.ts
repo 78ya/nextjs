@@ -1,5 +1,3 @@
-"use server";
-
 import { getUserSession } from "@/lib/cookies";
 import { getUserByEmail, updateUser } from "@/lib/db";
 import { hashPassword } from "@/lib/crypto";

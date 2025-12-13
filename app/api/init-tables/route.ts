@@ -1,5 +1,3 @@
-"use server";
-
 import { tableCreate } from '@/lib/db/schema';
 import { recreateAllTables } from '@/lib/db/recreate';
 

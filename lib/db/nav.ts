@@ -1,5 +1,3 @@
-'use server';
-
 import { getLibsqlClient } from "./client";
 
 export interface NavItemRecord {

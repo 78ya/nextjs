@@ -1,5 +1,3 @@
-"use server";
-
 import { getLibsqlClient } from "./client";
 
 // 表结构TypeScript接口定义

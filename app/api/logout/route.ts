@@ -1,5 +1,3 @@
-'use server';
-
 import { NextResponse } from "next/server";
 import { deleteUserSession, getUserSessionInfo } from "@/lib/cookies";
 import { getUserByEmail } from "@/lib/db";

@@ -1,5 +1,3 @@
-"use server";
-
 import { uploadImage } from "@/lib/image-host";
 
 /**
