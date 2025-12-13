@@ -164,11 +164,11 @@ export default async function Home() {
 
         {/* 精选文章 / 最新发布 */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl sm:text-2xl font-semibold text-black dark:text-zinc-50">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <h2 className="min-w-0 text-xl sm:text-2xl font-semibold text-black dark:text-zinc-50 break-words">
               最新发布
             </h2>
-            <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 break-words sm:shrink-0">
               已发布文章 · 实时读取
             </span>
           </div>
