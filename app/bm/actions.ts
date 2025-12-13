@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getAdminConfig } from "@/lib/edge-config";
 import { setAdminSession } from "@/lib/cookies";
-import { getUserSession, deleteUserSession } from "@/lib/cookies";
+import { getUserSession, deleteUserSession, getUserSessionInfo } from "@/lib/cookies";
 import { getUserByEmail, updateUser, deleteUser } from "@/lib/db";
 import { verifyPassword, hashPassword } from "@/lib/crypto";
 import { uploadImage } from "@/lib/image-host";
+import { revokeSession } from "@/lib/db/sessions";
 
 export type AdminLoginState = {
   ok: boolean;
@@ -219,6 +220,18 @@ export async function changePassword(
 
 // 退出登录
 export async function logoutAction(): Promise<void> {
+  // 如果是新会话（含 sid），先撤销当前 sid，确保“撤销其他会话/单会话撤销”真正生效
+  try {
+    const info = await getUserSessionInfo();
+    if (info?.email && info.sid) {
+      const user = await getUserByEmail(info.email);
+      if (user?.id) {
+        await revokeSession({ userId: user.id, sessionId: info.sid });
+      }
+    }
+  } catch (e) {
+    console.warn("[bm/logoutAction] revoke current session failed", e);
+  }
   await deleteUserSession();
   redirect("/login");
 }

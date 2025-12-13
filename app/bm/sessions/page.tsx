@@ -10,21 +10,28 @@ interface Session {
   location: string;
   lastActive: string;
   isCurrent: boolean;
+  createdAt?: string;
+  expiresAt?: string;
 }
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const loadSessions = async () => {
     setLoading(true);
     setError(null);
+    setWarning(null);
     try {
       const res = await fetch("/api/sessions", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok || !data?.ok) throw new Error(data?.message || "获取会话失败");
       setSessions(data.items || []);
+      if (data?.legacy) {
+        setWarning(data?.message || "当前会话为旧版本 cookie（建议重新登录以启用多端会话管理）");
+      }
     } catch (err: any) {
       setError(err?.message || "加载失败");
       setSessions([]);
@@ -40,14 +47,12 @@ export default function SessionsPage() {
   const handleRevoke = async (sessionId: string) => {
     if (!confirm("确定要撤销此会话吗？")) return;
     try {
-      const res = await fetch("/api/sessions", { method: "DELETE" });
+      const res = await fetch(`/api/sessions?id=${encodeURIComponent(sessionId)}`, {
+        method: "DELETE",
+      });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) throw new Error(data?.message || "撤销失败");
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      // 当前会话被撤销，刷新页面以清理状态
-      if (sessionId === "current") {
-        window.location.href = "/login";
-      }
     } catch (err: any) {
       alert(err?.message || "撤销失败");
     }
@@ -63,8 +68,7 @@ export default function SessionsPage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) throw new Error(data?.message || "撤销失败");
-      // 由于目前仅跟踪当前会话，保持当前
-      setSessions((prev) => prev.filter((s) => s.isCurrent));
+      await loadSessions();
     } catch (err: any) {
       alert(err?.message || "撤销失败");
     }
@@ -90,8 +94,31 @@ export default function SessionsPage() {
         </button>
       </div>
 
+      {warning && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-200">
+          {warning}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-200">
+          {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 text-sm text-zinc-600 dark:text-zinc-400">
+          加载中...
+        </div>
+      )}
+
       {/* 会话列表 */}
       <div className="space-y-4">
+        {!loading && !error && sessions.length === 0 && (
+          <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-6 text-sm text-zinc-500 dark:text-zinc-400">
+            暂无会话记录
+          </div>
+        )}
         {sessions.map((session) => (
           <div
             key={session.id}
@@ -104,7 +131,7 @@ export default function SessionsPage() {
                     {session.device.includes("iPhone") ||
                     session.device.includes("Android")
                       ? "📱"
-                      : session.device.includes("macOS")
+                      : session.device.includes("macOS") || session.device.includes("Windows")
                       ? "💻"
                       : "🖥️"}
                   </span>

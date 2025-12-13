@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { getActiveSessionById } from "@/lib/db/sessions";
 
 /**
  * Cookie 管理工具
@@ -18,9 +19,13 @@ const COOKIE_CONFIG = {
  * @param email 用户邮箱
  * @param maxAge 过期时间（秒），默认 24 小时
  */
-export async function setUserSession(email: string, maxAge: number = 60 * 60 * 24): Promise<void> {
+export async function setUserSession(
+  email: string,
+  maxAge: number = 60 * 60 * 24,
+  sessionId?: string
+): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.set("session", JSON.stringify({ email }), {
+  cookieStore.set("session", JSON.stringify({ email, sid: sessionId || null }), {
     ...COOKIE_CONFIG,
     maxAge,
   });
@@ -31,6 +36,17 @@ export async function setUserSession(email: string, maxAge: number = 60 * 60 * 2
  * @returns 用户邮箱，如果不存在返回 null
  */
 export async function getUserSession(): Promise<string | null> {
+  const info = await getUserSessionInfo();
+  return info?.email || null;
+}
+
+/**
+ * 获取用户会话详情（包含 sid）
+ * - 兼容旧 cookie：{ email }
+ * - 新 cookie：{ email, sid }
+ * - 如果 sid 存在，会校验该 sid 是否在 sessions 表中处于有效状态；无效则返回 null
+ */
+export async function getUserSessionInfo(): Promise<{ email: string; sid: string | null } | null> {
   const cookieStore = await cookies();
   const session = cookieStore.get("session");
   
@@ -40,10 +56,29 @@ export async function getUserSession(): Promise<string | null> {
 
   try {
     const data = JSON.parse(session.value);
-    return data.email || null;
+    const email = (data?.email as string | undefined) || null;
+    const sid = (data?.sid as string | undefined) || null;
+    if (!email) return null;
+
+    // 如果存在 sid，则必须校验 sid 是否有效（防止伪造 cookie）
+    if (sid) {
+      const s = await getActiveSessionById(sid);
+      if (!s) return null;
+      if (s.email !== email) return null;
+    }
+
+    return { email, sid };
   } catch {
     return null;
   }
+}
+
+/**
+ * 获取当前会话 sid（不存在则返回 null）
+ */
+export async function getUserSessionId(): Promise<string | null> {
+  const info = await getUserSessionInfo();
+  return info?.sid || null;
 }
 
 /**

@@ -195,10 +195,21 @@ export async function SessionsTable(): Promise<string> {
       user_id INTEGER,
       -- 会话数据，JSON格式存储
       data TEXT,
+      -- 会话 IP（用于会话管理展示）
+      ip TEXT,
+      -- User-Agent（用于会话管理展示）
+      user_agent TEXT,
+      -- 解析后的设备/浏览器（便于 UI 展示）
+      device TEXT,
+      browser TEXT,
       -- 会话过期时间
       expires_at TIMESTAMP NOT NULL,
       -- 会话创建时间
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      -- 最后活动时间（用于排序与展示）
+      last_active_at TIMESTAMP,
+      -- 撤销时间（非空表示已撤销）
+      revoked_at TIMESTAMP,
       -- 外键关联，用户删除时级联删除会话
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -207,6 +218,8 @@ export async function SessionsTable(): Promise<string> {
     CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_sessions_last_active_at ON sessions(last_active_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_sessions_revoked_at ON sessions(revoked_at);
   `;
 }
 
